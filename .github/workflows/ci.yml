@@ -1,0 +1,43 @@
+name: CI Pipeline Spring Boot
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # java-version debe coincidir con <java.version> del pom.xml (17 en este proyecto).
+      # Si algún día subes el pom a Java 21, actualiza esto también.
+      - name: Configurar JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Build con Maven
+        run: mvn -B clean compile
+
+      # src/test/resources/application.yml define su propia configuración
+      # aislada (H2 en memoria + un JWT_SECRET de prueba fijo), así que las
+      # pruebas corren igual en el runner de GitHub Actions que en local, sin
+      # necesitar Postgres ni ninguna variable de entorno del despliegue real.
+      - name: Ejecutar pruebas unitarias
+        run: mvn -B test
+
+      - name: Reporte de cobertura JaCoCo
+        run: mvn -B jacoco:report
+
+      - name: Publicar reporte como artefacto
+        uses: actions/upload-artifact@v4
+        with:
+          name: reporte-jacoco
+          path: target/site/jacoco
+          if-no-files-found: warn

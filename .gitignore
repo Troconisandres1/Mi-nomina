@@ -1,0 +1,18 @@
+target/
+data/
+*.iml
+.idea/
+.vscode/
+*.log
+.DS_Store
+HELP.md
+
+# Nunca subir archivos con claves reales. application.yml en git solo tiene
+# placeholders ${VARIABLE:...} que se llenan con variables de entorno reales
+# al momento de arrancar — eso sí es seguro y se sube normalmente.
+run-local.ps1
+run-local.sh
+.env
+.env.local
+application-local.yml
+application-local.properties

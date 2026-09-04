@@ -1,0 +1,70 @@
+spring:
+  application:
+    name: mi-nomina-backend
+  profiles:
+    active: dev
+
+app:
+  jwt:
+    secret: ${JWT_SECRET:}
+    expiration-ms: ${JWT_EXPIRATION_MS:604800000} # 7 dias
+  ai:
+    # Una o varias claves de Gemini, separadas por coma. Si solo tienes una,
+    # puedes seguir usando GEMINI_API_KEY (singular) y funciona igual.
+    # Ejemplo con varias: $env:GEMINI_API_KEYS="AIza...clave1,AIza...clave2,AIza...clave3"
+    gemini-api-keys: ${GEMINI_API_KEYS:${GEMINI_API_KEY:}}
+    # gemini-1.5-flash fue retirado por Google según la documentación oficial más
+    # reciente que revisé, pero si en tu cuenta/proyecto de Google Cloud todavía
+    # te funciona (como en tu app de Render), puedes sobreescribir esto con la
+    # variable de entorno GEMINI_URL sin tener que recompilar el backend:
+    #   $env:GEMINI_URL="https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
+    gemini-url: ${GEMINI_URL:https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5500,http://localhost:8080}
+  admin:
+    # Correo que automáticamente queda como ADMIN y aprobado al registrarse.
+    # SIN valor por defecto a propósito. Si dejas esto vacío, NADIE puede
+    # auto-aprobarse como admin registrándose con un correo "mágico" — tienes
+    # que configurar tu propio correo real por variable de entorno antes de
+    # desplegar. Ver run-local.ps1.example.
+    bootstrap-email: ${ADMIN_EMAIL:}
+
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+  datasource:
+    url: jdbc:h2:file:./data/mi-nomina-db;AUTO_SERVER=TRUE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/minomina}
+    username: ${DB_USER:minomina}
+    password: ${DB_PASSWORD:minomina}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect

@@ -1,0 +1,27 @@
+# Configuración exclusiva para src/test/java. Se usa SOLO al correr `mvn test`
+# (nunca al arrancar la app con `mvn spring-boot:run`), y por eso puede tener
+# valores de ejemplo sin riesgo: esta base de datos es en memoria, se crea y
+# se destruye en cada ejecución de las pruebas, nunca toca tu ./data/ real.
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+
+app:
+  jwt:
+    secret: secreto-exclusivo-de-pruebas-automatizadas-nunca-usar-en-produccion-123456
+    expiration-ms: 604800000
+  ai:
+    gemini-api-keys: ""
+    gemini-url: https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent
+  cors:
+    allowed-origins: http://localhost:5500,http://localhost:8080
+  admin:
+    # Vacío a propósito: en las pruebas nadie debe auto-registrarse como admin.
+    bootstrap-email: ""

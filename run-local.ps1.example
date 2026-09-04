@@ -1,0 +1,19 @@
+# ── Plantilla para arrancar el backend en local ──────────────────────────
+# 1. Copia este archivo como "run-local.ps1" (SIN el ".example") en la misma
+#    carpeta. Ese nombre ya está en .gitignore, así que nunca se sube a GitHub.
+# 2. Reemplaza los valores de ejemplo por tus claves reales.
+# 3. Cada vez que quieras arrancar el backend, solo ejecuta: .\run-local.ps1
+#
+# Puedes poner una clave sola o varias separadas por coma en GEMINI_API_KEYS
+# (el backend rota automáticamente a la siguiente si una se queda sin cuota).
+
+$env:GEMINI_API_KEYS = "AIza...tu_primera_clave,AIza...tu_segunda_clave,AIza...tu_tercera_clave"
+$env:JWT_SECRET = "cambia-esto-por-un-secreto-largo-y-aleatorio-de-al-menos-32-caracteres"
+# IMPORTANTE: ya NO hay un correo de admin por defecto en el código (era un
+# hueco de seguridad: cualquiera que viera el repo público podía registrarse
+# con ese correo y quedar como admin). Pon aquí el correo que TÚ vas a usar
+# para registrarte como admin — puede ser cualquier valor, el punto es que
+# solo tú lo conoces porque este archivo nunca se sube a GitHub.
+$env:ADMIN_EMAIL = "admin@minomina.local"
+
+mvn spring-boot:run
