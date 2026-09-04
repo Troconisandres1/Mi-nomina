@@ -41,3 +41,8 @@ jobs:
           name: reporte-jacoco
           path: target/site/jacoco
           if-no-files-found: warn
+          
+      - name: Verificar variable de entorno
+        env:
+          APP_ENV: ${{ secrets.APP_ENV_DEMO }}
+        run: 'echo "Ejecutando en el ambiente configurado: $APP_ENV"'
