@@ -134,17 +134,4 @@ Puntos exactos a reemplazar en tu archivo:
    la respuesta llega en `data.respuesta` en vez de
    `data.candidates[0].content.parts[...]` (eso ya lo arma el backend).
 
-Te dejo un archivo de ejemplo (`frontend-adapter-example.js`) con las 4 piezas
-reescritas y comentadas para que las copies dentro de tu HTML en lugar del
-bloque de Firebase. No reemplaza el archivo completo a propósito: es más
-seguro que integres estas piezas tú mismo revisando que cada `id` del DOM siga
-coincidiendo con tu versión actual del HTML.
 
-## 7. Por qué "sin Firebase" pero antes había una contradicción
-
-Pediste explícitamente "todo, sin Firebase", así que la autenticación quedó
-100% en Spring Boot con JWT + bcrypt (no se usa Firebase Auth para nada). El
-flujo de aprobación manual de cuentas (`PENDIENTE` → `APROBADO`) se mantiene
-igual que tenías, solo que ahora lo apruebas con
-`POST /api/admin/usuarios/{id}/aprobar` en vez de cambiar un campo en
-Firestore Console.
