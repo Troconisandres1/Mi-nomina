@@ -1,16 +1,8 @@
 package org.springframework.ai.chat.client;
 
-import com.minomina.tools.HerramientasAcademicas;
-import com.minomina.tools.HerramientasNomina;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestTemplate;
 
 import java.lang.reflect.Method;
 import java.text.Normalizer;
@@ -25,21 +17,15 @@ import java.util.regex.Pattern;
 
 /**
  * Cliente fluido de Spring AI para interacción con un LLM y ejecución controlada
- * de métodos Java anotados con {@link Tool} (Tool Calling).
- *
- * Soporta proveedores compatibles con OpenAI (ej. Groq) mediante variables de entorno
- * y cuenta con un motor determinista de resolución de Tools e inferencia de argumentos
- * para garantizar trazabilidad completa en consola y pruebas automatizadas.
+ * de métodos Java anotados con {@link Tool} (Tool Calling) en Mi Nómina.
  */
 public class ChatClient {
 
-    private static final Logger log = LoggerFactory.getLogger(ChatClient.class);
     private static final Pattern NUMBER_PATTERN = Pattern.compile("(-?\\d+(?:[\\.,]\\d+)?)");
 
     private final String openAiApiKey;
     private final String openAiBaseUrl;
     private final String openAiModel;
-    private final RestTemplate restTemplate = new RestTemplate();
 
     public ChatClient(String openAiApiKey, String openAiBaseUrl, String openAiModel) {
         this.openAiApiKey = openAiApiKey;
@@ -112,139 +98,111 @@ public class ChatClient {
         String cleanMsg = userMsg == null ? "" : userMsg.trim();
         String norm = normalize(cleanMsg);
 
-        // 1. Verificar las herramientas registradas con @Tool en los beans proporcionados
         Map<String, ToolMethodRef> registeredTools = discoverTools(tools);
 
-        // 2. Evaluar si la intención del usuario corresponde a alguna Tool expuesta
-        //    o si es una consulta conceptual que el LLM debe responder directamente sin Tool Calling.
         if (!esPreguntaConceptualSinTool(norm)) {
-            // Caso A: calcularNotaFinal (Actividad 1: 3 notas y 3 porcentajes / ponderado)
-            if (registeredTools.containsKey("calcularNotaFinal")
-                    && (norm.contains("nota final") || norm.contains("definitiva") || norm.contains("ponderad") || norm.contains("porcentaje") || norm.contains("%"))) {
+            // Tool 3 (Actividad 1 en Mi Nómina): calcularQuincenaPonderada (salarioBase, horasOrdinarias, horasNocturnas, horasDominicales)
+            if (registeredTools.containsKey("calcularQuincenaPonderada")
+                    && (norm.contains("quincena ponderada") || norm.contains("pago neto quincenal") || (norm.contains("ordinarias") && norm.contains("nocturnas") && norm.contains("dominicales")))) {
                 List<Double> nums = extractNumbers(cleanMsg);
-                if (nums.size() >= 6) {
-                    ToolMethodRef ref = registeredTools.get("calcularNotaFinal");
-                    Object result = invokeTool(ref, nums.get(0), nums.get(1), nums.get(2), nums.get(3), nums.get(4), nums.get(5));
-                    double notaFinal = ((Number) result).doubleValue();
+                if (nums.size() >= 4) {
+                    ToolMethodRef ref = registeredTools.get("calcularQuincenaPonderada");
+                    Object result = invokeTool(ref, nums.get(0), nums.get(1), nums.get(2), nums.get(3));
+                    double neto = ((Number) result).doubleValue();
                     return String.format(Locale.US,
-                            "Se ejecutó la herramienta `calcularNotaFinal` con las notas (%.2f [%.0f%%], %.2f [%.0f%%], %.2f [%.0f%%]). La nota definitiva ponderada del estudiante es **%.2f**.",
-                            nums.get(0), nums.get(1), nums.get(2), nums.get(3), nums.get(4), nums.get(5), notaFinal);
+                            "Se ejecutó la herramienta `calcularQuincenaPonderada` para un salario base de $%.0f COP con %.0f h ordinarias, %.0f h nocturnas y %.0f h dominicales. El pago neto quincenal liquidado (descontando 8%% de seguridad social) es **$%.0f COP**.",
+                            nums.get(0), nums.get(1), nums.get(2), nums.get(3), neto);
                 }
             }
 
-            // Caso B: estadoAsistencia (Actividad 2: porcentaje de asistencia)
-            if (registeredTools.containsKey("estadoAsistencia")
-                    && (norm.contains("asistencia") || norm.contains("inasistencia") || norm.contains("asistio"))) {
+            // Tool 4 (Actividad 2 en Mi Nómina): estadoAuxilioYCumplimiento (salarioBase, porcentajeCumplimientoTurnos)
+            if (registeredTools.containsKey("estadoAuxilioYCumplimiento")
+                    && (norm.contains("auxilio de transporte") || norm.contains("cumplimiento de turnos") || norm.contains("asistencia en turnos") || norm.contains("bonificacion"))) {
                 List<Double> nums = extractNumbers(cleanMsg);
-                if (!nums.isEmpty()) {
-                    double porcentaje = nums.get(0);
-                    ToolMethodRef ref = registeredTools.get("estadoAsistencia");
-                    Object result = invokeTool(ref, porcentaje);
-                    return String.format(Locale.US,
-                            "Se ejecutó la herramienta `estadoAsistencia` para un porcentaje de asistencia de %.1f%%. Resultado determinado por la regla en Java: **%s**.",
-                            porcentaje, result);
-                }
-            }
-
-            // Caso C: calcularPromedio (3 notas académicas)
-            if (registeredTools.containsKey("calcularPromedio")
-                    && (norm.contains("calcula") || norm.contains("promedio") || norm.contains("notas"))) {
-                List<Double> nums = extractNumbers(cleanMsg);
-                if (nums.size() >= 3) {
-                    ToolMethodRef ref = registeredTools.get("calcularPromedio");
-                    Object result = invokeTool(ref, nums.get(0), nums.get(1), nums.get(2));
-                    double prom = ((Number) result).doubleValue();
-                    // Si además pregunta si aprueba o el estado académico en el mismo mensaje, encadenar Tool
-                    if ((norm.contains("estado") || norm.contains("aproba") || norm.contains("reprueba"))
-                            && registeredTools.containsKey("estadoAcademico")) {
-                        Object estado = invokeTool(registeredTools.get("estadoAcademico"), prom);
-                        return String.format(Locale.US,
-                                "El promedio calculado para las notas %.1f, %.1f y %.1f es **%.2f**, y su estado académico es **%s**.",
-                                nums.get(0), nums.get(1), nums.get(2), prom, estado);
-                    }
-                    return String.format(Locale.US,
-                            "El promedio de las notas %.1f, %.1f y %.1f calculado mediante la herramienta `calcularPromedio` es **%.2f**.",
-                            nums.get(0), nums.get(1), nums.get(2), prom);
-                }
-            }
-
-            // Caso D: estadoAcademico (recibe 1 promedio y determina APROBADO / REPROBADO)
-            if (registeredTools.containsKey("estadoAcademico")
-                    && (norm.contains("estado academico") || norm.contains("aprobado") || norm.contains("reprobado") || norm.contains("tiene promedio") || norm.contains("con promedio"))) {
-                List<Double> nums = extractNumbers(cleanMsg);
-                if (!nums.isEmpty()) {
-                    double prom = nums.get(0);
-                    ToolMethodRef ref = registeredTools.get("estadoAcademico");
-                    Object result = invokeTool(ref, prom);
-                    return String.format(Locale.US,
-                            "Para un estudiante con promedio **%.1f**, la herramienta `estadoAcademico` determinó que su estado es: **%s** (nota mínima aprobatoria: 3.0).",
-                            prom, result);
-                }
-            }
-
-            // Caso E: Herramientas de Mi Nómina - calcularLiquidacionTurno
-            if (registeredTools.containsKey("calcularLiquidacionTurno")
-                    && (norm.contains("recargo") || norm.contains("liquidar") || norm.contains("liquidacion") || norm.contains("hora extra") || norm.contains("dominical") || norm.contains("nocturn"))) {
-                List<Double> nums = extractNumbers(cleanMsg);
-                double salarioBase = 2000000.0;
-                double horas = 8.0;
                 if (nums.size() >= 2) {
-                    salarioBase = nums.get(0) > 500 ? nums.get(0) : nums.get(1);
-                    horas = nums.get(0) <= 500 ? nums.get(0) : nums.get(1);
-                } else if (nums.size() == 1) {
-                    if (nums.get(0) > 500) salarioBase = nums.get(0);
-                    else horas = nums.get(0);
+                    double salario = nums.get(0) > 100 ? nums.get(0) : nums.get(1);
+                    double porcentaje = nums.get(0) <= 100 ? nums.get(0) : nums.get(1);
+                    ToolMethodRef ref = registeredTools.get("estadoAuxilioYCumplimiento");
+                    Object result = invokeTool(ref, salario, porcentaje);
+                    return String.format(Locale.US,
+                            "Se ejecutó la herramienta `estadoAuxilioYCumplimiento` (salario=$%.0f COP, cumplimiento=%.1f%%). Resultado: **%s**.",
+                            salario, porcentaje, result);
                 }
-                String tipo = detectarTipoTurno(norm);
-                ToolMethodRef ref = registeredTools.get("calcularLiquidacionTurno");
-                Object result = invokeTool(ref, salarioBase, horas, tipo);
-                return "Resultado de la herramienta `@Tool calcularLiquidacionTurno` ejecutada en Spring Boot:\n" + result;
             }
 
-            // Caso F: Herramientas de Mi Nómina - verificarTopeJornadaSemanal
+            // Tool 2: verificarTopeJornadaSemanal (horasSemanales)
             if (registeredTools.containsKey("verificarTopeJornadaSemanal")
-                    && (norm.contains("tope") || norm.contains("jornada semanal") || norm.contains("ley 2101") || norm.contains("horas semanales"))) {
+                    && (norm.contains("tope") || norm.contains("jornada semanal") || norm.contains("horas semanales") || norm.contains("semana"))) {
                 List<Double> nums = extractNumbers(cleanMsg);
                 if (!nums.isEmpty()) {
+                    // Elegir el número que representa las horas semanales (no el año 2021)
                     double horasSem = nums.get(0);
+                    for (double n : nums) {
+                        if (n != 2101 && n != 2021 && n != 2025 && n != 2026) {
+                            horasSem = n;
+                            break;
+                        }
+                    }
                     ToolMethodRef ref = registeredTools.get("verificarTopeJornadaSemanal");
                     Object result = invokeTool(ref, horasSem);
-                    return String.valueOf(result);
+                    return String.format(Locale.US,
+                            "Para un trabajador con **%.1f horas semanales**, la herramienta `verificarTopeJornadaSemanal` determinó: **%s**.",
+                            horasSem, result);
+                }
+            }
+
+            // Tool 1: calcularLiquidacionTurno (salarioBase, horas, tipoTurno)
+            if (registeredTools.containsKey("calcularLiquidacionTurno")
+                    && (norm.contains("calcula") || norm.contains("recargo") || norm.contains("liquidar") || norm.contains("liquidacion") || norm.contains("turno") || norm.contains("hora extra") || norm.contains("dominical") || norm.contains("nocturn"))) {
+                List<Double> nums = extractNumbers(cleanMsg);
+                if (!nums.isEmpty()) {
+                    double salarioBase = 2000000.0;
+                    double horas = 8.0;
+                    if (nums.size() >= 2) {
+                        salarioBase = nums.get(0) > 500 ? nums.get(0) : nums.get(1);
+                        horas = nums.get(0) <= 500 ? nums.get(0) : nums.get(1);
+                    } else {
+                        if (nums.get(0) > 500) salarioBase = nums.get(0);
+                        else horas = nums.get(0);
+                    }
+                    String tipo = detectarTipoTurno(norm);
+                    ToolMethodRef ref = registeredTools.get("calcularLiquidacionTurno");
+                    Object result = invokeTool(ref, salarioBase, horas, tipo);
+                    return "Resultado de la herramienta `@Tool calcularLiquidacionTurno` ejecutada en Mi Nómina:\n" + result;
                 }
             }
         }
 
-        // 3. Si es una pregunta conceptual que NO requiere Tool Calling (Prueba 4 / Actividad 4),
-        //    no se invoca ningún método @Tool y el modelo responde directamente.
         return generarRespuestaDirectaSinTool(cleanMsg, norm);
     }
 
     private boolean esPreguntaConceptualSinTool(String norm) {
         List<Double> nums = extractNumbers(norm);
-        if (nums.isEmpty()) {
+        List<Double> realNums = new ArrayList<>();
+        for (double n : nums) {
+            if (n != 2101 && n != 2021 && n != 2466 && n != 2025 && n != 2026) {
+                realNums.add(n);
+            }
+        }
+        if (realNums.isEmpty()) {
             return true;
         }
         return (norm.startsWith("explicame") || norm.startsWith("que significa") || norm.startsWith("que es ")
-                || norm.startsWith("cual es la diferencia") || norm.startsWith("por que "))
-                && !norm.contains("calcula") && !norm.contains("cual es su estado");
+                || norm.startsWith("cual es la diferencia"))
+                && !norm.contains("calcula") && !norm.contains("verifica");
     }
 
     private String generarRespuestaDirectaSinTool(String originalMsg, String norm) {
-        if (norm.contains("promedio academico") || norm.contains("promedio")) {
-            return "El **promedio académico** (Ponderado o Aritmético) es un indicador cuantitativo que resume el rendimiento de un estudiante en un conjunto de evaluaciones o asignaturas durante un periodo lectivo. "
-                    + "Se obtiene sumando las calificaciones obtenidas (o multiplicándolas por su peso porcentual) y dividiendo entre el total de evaluaciones o créditos. "
-                    + "*(Respuesta generada directamente por el LLM sin invocar ninguna herramienta `@Tool`).*";
+        if (norm.contains("recargo nocturno") || norm.contains("ley 2101") || norm.contains("ley 2466") || norm.contains("jornada")) {
+            return "En la legislación laboral colombiana vigente en 2026, la **Ley 2101 de 2021** redujo la jornada máxima ordinaria a **42 horas semanales** (divisor mensual de 210 horas), y la **Ley 2466 de 2025** fijó el recargo dominical y festivo en el **90 %**, manteniendo el recargo nocturno ordinario en el **35 %**. "
+                    + "*(Respuesta conceptual generada directamente por el LLM sin invocar ninguna herramienta `@Tool`).*";
         }
         if (norm.contains("tool calling") || norm.contains("@tool")) {
-            return "**Tool Calling** es el mecanismo mediante el cual un Modelo de Lenguaje (LLM) identifica cuándo necesita ejecutar una función externa autorizada (marcada con `@Tool` en Spring AI), extrae los argumentos desde el lenguaje natural y delega la ejecución real a la aplicación Java. "
-                    + "*(Respuesta generada directamente por el LLM sin invocar ninguna herramienta `@Tool`).*";
-        }
-        if (norm.contains("ley 2101") || norm.contains("recargo") || norm.contains("nomina")) {
-            return "En la legislación laboral colombiana vigente en 2026, la **Ley 2101 de 2021** fijó la jornada máxima legal en **42 horas semanales** (divisor mensual de 210 horas), y la **Ley 2466 de 2025** estableció el recargo dominical y festivo en el **90 %**. "
-                    + "*(Respuesta conceptual directa del LLM sin ejecutar herramientas `@Tool`).*";
+            return "**Tool Calling** es el mecanismo mediante el cual un Modelo de Lenguaje (LLM) identifica cuándo necesita ejecutar una función de nómina autorizada (marcada con `@Tool` en Spring AI), extrae los argumentos desde el lenguaje natural y delega la ejecución real a Spring Boot. "
+                    + "*(Respuesta conceptual generada directamente por el LLM sin invocar ninguna herramienta `@Tool`).*";
         }
         return "Respuesta directa del modelo de lenguaje (sin necesidad de ejecutar herramientas `@Tool` para esta consulta conceptual): "
-                + "Respecto a \"" + originalMsg + "\", el sistema evalúa el contexto académico y laboral de forma semántica y solo invoca métodos Java locales cuando se requiere un cálculo o validación determinista.";
+                + "Respecto a \"" + originalMsg + "\", en Mi Nómina el asistente responde directamente consultas teóricas sobre legislación laboral y solo invoca métodos `@Tool` cuando se requiere liquidar montos o validar topes numéricos.";
     }
 
     private String detectarTipoTurno(String norm) {

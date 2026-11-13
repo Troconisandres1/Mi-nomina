@@ -3,7 +3,6 @@ package com.minomina.controller;
 import com.minomina.model.Usuario;
 import com.minomina.security.AuthenticatedUser;
 import com.minomina.service.*;
-import com.minomina.tools.HerramientasAcademicas;
 import com.minomina.tools.HerramientasNomina;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -22,14 +21,12 @@ public class AiController {
     private final HistorialService historialService;
     private final ChatClient chatClient;
     private final HerramientasNomina herramientasNomina;
-    private final HerramientasAcademicas herramientasAcademicas;
 
     public AiController(AiProxyService aiProxyService, AiContextBuilder aiContextBuilder,
                          UsuarioService usuarioService, RegistroService registroService,
                          HistorialService historialService,
                          ChatClient.Builder chatClientBuilder,
-                         HerramientasNomina herramientasNomina,
-                         HerramientasAcademicas herramientasAcademicas) {
+                         HerramientasNomina herramientasNomina) {
         this.aiProxyService = aiProxyService;
         this.aiContextBuilder = aiContextBuilder;
         this.usuarioService = usuarioService;
@@ -37,7 +34,6 @@ public class AiController {
         this.historialService = historialService;
         this.chatClient = chatClientBuilder.build();
         this.herramientasNomina = herramientasNomina;
-        this.herramientasAcademicas = herramientasAcademicas;
     }
 
     public record ChatRequest(String mensaje, List<String> historialReciente) { }
@@ -47,11 +43,11 @@ public class AiController {
     public ChatResponse chat(@AuthenticationPrincipal AuthenticatedUser auth, @RequestBody ChatRequest req) {
         Usuario usuario = usuarioService.obtenerPorId(auth.getUserId());
 
-        // Si el mensaje solicita un cálculo determinista cubierto por @Tool (Spring AI Tool Calling),
-        // se ejecuta primero la herramienta registrada:
+        // Si el mensaje solicita un cálculo o verificación determinista de nómina cubierto por @Tool,
+        // se ejecuta la herramienta registrada en HerramientasNomina:
         String toolCheck = chatClient.prompt()
                 .user(req.mensaje())
-                .tools(herramientasNomina, herramientasAcademicas)
+                .tools(herramientasNomina)
                 .call()
                 .content();
         if (toolCheck != null && !toolCheck.contains("sin invocar ninguna herramienta")
