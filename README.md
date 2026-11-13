@@ -1,150 +1,138 @@
-# Mi Nómina — Backend Spring Boot
+# Mi Nómina
 
-Backend que reemplaza **Firebase Auth + Firestore + el servidor Node de IA** por un único
-servicio Spring Boot con JWT propio, base de datos relacional y proxy a Gemini.
+**Mi Nómina** es una plataforma web de control, cálculo y análisis de nómina quincenal con agente inteligente, analítica de datos y optimización de turnos, desarrollada bajo la normativa laboral colombiana vigente (Código Sustantivo del Trabajo, Ley 2101 de 2021 y Ley 2466 de 2025).
 
-## 1. Requisitos
+Permite a los trabajadores por turnos registrar sus jornadas diarias, verificar automáticamente recargos ordinarios, nocturnos, dominicales, festivos y horas extras, consolidar el historial de quincenas cerradas, proyectar indicadores en un Data Warehouse con esquema en estrella para Power BI, optimizar la programación quincenal de turnos mediante Programación Lineal Entera (PLE) y realizar consultas sobre sus propios datos a través de un asistente conversacional basado en inteligencia artificial.
 
-- Java 17+
-- Maven 3.9+
-- (Opcional en dev) Nada más: el perfil `dev` usa **H2 embebida**, no necesitas instalar nada.
-- (Producción) PostgreSQL 14+
+---
 
-## 2. Arrancar en local (perfil `dev`, con H2)
+## Integrantes y Contexto Académico
 
-> Nota: este proyecto no incluye el Maven Wrapper (`mvnw`) porque se generó sin
-> acceso a internet. Usa tu Maven local (`mvn -version` para comprobar que lo
-> tienes) o genera el wrapper tú mismo con `mvn -N io.takari:maven:wrapper`.
+- **Autores:** Andrés Camilo Troconis, Luis Castillo, Alan Cassiani
+- **Programa:** Ingeniería de Sistemas — VII Semestre (Cartagena de Indias, Colombia)
+- **Asignaturas Integradas:**
+  - **Desarrollo de Aplicaciones Web (DWA):** Doc. Fabio García
+  - **Visualización de Datos II (VD II):** Doc. Lucía Mestre
+  - **Investigación de Operaciones (IO):** Doc. Walter Espriella
 
-```bash
-cd mi-nomina-backend
-mvn spring-boot:run
+---
+
+## Características Principales
+
+- **Motor de liquidación laboral (`PayrollEngine`):** Clasificación minuto a minuto de horas ordinarias diurnas, nocturnas (+35 %), dominicales y festivas (+80 % hasta el 30 de junio de 2026 y +90 % desde el 1 de julio de 2026) y horas extras, aplicando la reducción de la jornada máxima semanal (44 h a 42 h desde el 15 de julio de 2026), límites diarios (10 h en día hábil / 8 h en domingo o festivo), auxilio de transporte y deducciones de ley (8 % salud y pensión).
+- **Gestión de novedades e historial:** Registro de turnos normales, incapacidades médicas, días compensatorios y días no citados, cierre de quincenas con instantánea histórica (`snapshot`) y exportación a PDF y Excel.
+- **Agente inteligente con IA (`AiController` / `AiProxyService`):** Asistente conversacional conectado a Google Gemini (`gemini-2.5-flash`) con contexto aislado por usuario autenticado y rotación automática de claves API.
+- **Data Warehouse y analítica en Power BI (`DataWarehouseEtlService`):** Proceso ETL que transforma y anonimiza los registros (`SHA-256`, Ley 1581 de 2012) hacia un modelo dimensional en estrella (`Hecho_Turno`, `Dim_Fecha`, `Dim_Usuario`, `Dim_TipoDia`, `Dim_TipoHora`, `Dim_Quincena`), con exportación directa a Excel/CSV/JSON e incrustación del dashboard de Power BI en la aplicación web.
+- **Optimización matemática de turnos (`OptimizacionTurnosService`):** Modelo de Programación Lineal Entera Binaria (PLE) resuelto mediante Ramificación y Acotamiento (*Branch and Bound*) que determina qué turnos tomar en la quincena para maximizar el ingreso neto respetando topes semanales, límites diarios y descansos obligatorios, contrastando la ganancia frente a una asignación manual.
+- **Seguridad y control de acceso:** Autenticación stateless mediante JWT (`jjwt`), contraseñas cifradas con `BCrypt` y flujo de aprobación de cuentas por administrador (`PENDIENTE` → `APROBADO`).
+
+---
+
+## Stack Tecnológico
+
+- **Backend:** Java 17, Spring Boot 3.3.4 (Spring Web, Spring Security, Spring Data JPA, Bean Validation)
+- **Seguridad:** JSON Web Tokens (`jjwt` 0.12.6) y `BCryptPasswordEncoder`
+- **Base de Datos Transaccional y Analítica:** H2 Database (desarrollo) y PostgreSQL 14+ (producción y Data Warehouse)
+- **Frontend:** HTML5, CSS3, JavaScript (ES6+), PWA, Chart.js, jsPDF y SheetJS
+- **Inteligencia Artificial:** API REST de Google Gemini (`gemini-2.5-flash`)
+- **Analítica e Investigación de Operaciones:** Power BI, SQL (Esquema en Estrella) y Python 3 (ETL y Solver PLE)
+- **Construcción, Pruebas y CI:** Apache Maven, JUnit 5, JaCoCo y GitHub Actions
+
+---
+
+## Estructura del Proyecto
+
+```text
+Mi-nomina/
+├── src/main/java/com/minomina/
+│   ├── config/          # Configuración de Spring Security, CORS y filtros HTTP
+│   ├── controller/      # Controladores REST (Auth, Registro, Historial, Config, Admin, IA, Analytics, Optimización)
+│   ├── dto/             # Objetos de transferencia de datos (DTOs de entrada y salida)
+│   ├── exception/       # Manejo centralizado de errores (GlobalExceptionHandler)
+│   ├── model/           # Entidades JPA y enumeraciones (Usuario, Registro, Historial, ConfigNomina)
+│   ├── repository/      # Repositorios Spring Data JPA
+│   ├── security/        # Servicio JWT, filtro de autenticación y principal de usuario
+│   ├── service/         # Lógica de negocio (PayrollEngine, AiProxyService, DataWarehouseEtlService, OptimizacionTurnosService)
+│   └── util/            # Convertidores de persistencia JSON
+├── src/main/resources/
+│   ├── static/          # Interfaz web SPA/PWA (index.html)
+│   └── application.yml  # Configuración de perfiles (dev con H2 y prod con PostgreSQL)
+├── src/test/            # Pruebas unitarias de motor de nómina, autenticación, ETL y optimizador PLE
+├── dw/                  # Scripts SQL del Data Warehouse (PostgreSQL) y ETL en Python para Power BI
+├── io-solver/           # Implementación computacional en Python del modelo PLE (Branch & Bound)
+├── docs/                # Documentación técnica, evidencias de VD II e IO, e Informe Metodológico Final
+├── pom.xml              # Configuración de dependencias y plugins Maven
+├── .env.example         # Plantilla de variables de entorno
+└── run-local.ps1.example # Plantilla de ejecución local en PowerShell
 ```
 
-Por defecto usa el perfil `dev` (definido en `application.yml`), que crea un archivo
-`./data/mi-nomina-db.mv.db` — no necesitas Postgres para probar todo el flujo.
+---
 
-**Abre `http://localhost:8080/` directamente en el navegador** (no abras
-`index.html` con doble clic). El propio backend sirve el HTML desde
-`src/main/resources/static/index.html`, así que todo queda en el mismo origen
-y no hay problemas de CORS. Si abres el HTML suelto con doble clic
-(`file:///...`), el navegador lo trata como un origen especial (`null`) que
-los backends no pueden autorizar de forma estándar — por eso este proyecto ya
-viene con el HTML integrado, para evitarte ese problema.
+## Endpoints Principales de la API REST
 
-### Variables de entorno importantes
-
-| Variable | Para qué sirve | Ejemplo |
-|---|---|---|
-| `JWT_SECRET` | Firma de los tokens JWT (mín. 32 caracteres) | `openssl rand -base64 48` |
-| `GEMINI_API_KEY` | Clave de la API de Gemini para el asistente de IA | `AIza...` |
-| `ADMIN_EMAIL` | Correo que al registrarse queda ADMIN y aprobado automáticamente | `tu@correo.com` |
-| `CORS_ALLOWED_ORIGINS` | Orígenes permitidos (donde sirvas el HTML) | `http://localhost:5500` |
-| `SPRING_PROFILES_ACTIVE` | `dev` (H2) o `prod` (Postgres) | `prod` |
-| `DB_URL`, `DB_USER`, `DB_PASSWORD` | Solo en `prod` | — |
-
-**Importante:** en producción SIEMPRE define `JWT_SECRET` y `GEMINI_API_KEY` tú mismo;
-los valores por defecto en `application.yml` son solo para que arranque en dev.
-
-## 3. Arrancar en producción con PostgreSQL
-
-```bash
-export SPRING_PROFILES_ACTIVE=prod
-export DB_URL=jdbc:postgresql://localhost:5432/minomina
-export DB_USER=minomina
-export DB_PASSWORD=tu_password
-export JWT_SECRET=$(openssl rand -base64 48)
-export GEMINI_API_KEY=tu_api_key_de_gemini
-export ADMIN_EMAIL=tu@correo.com
-export CORS_ALLOWED_ORIGINS=https://tu-dominio.com
-
-mvn spring-boot:run
-```
-
-En `prod`, `ddl-auto` está en `validate` (no crea tablas automáticamente). Para la
-primera vez, arranca una vez con `SPRING_PROFILES_ACTIVE=prod` pero con
-`spring.jpa.hibernate.ddl-auto=update` temporalmente (o añade Flyway/Liquibase si
-vas a mantener esto a largo plazo — este proyecto no lo incluye por simplicidad).
-
-## 4. Endpoints principales
-
-Todos los endpoints (salvo `/api/auth/**`) requieren el header:
-`Authorization: Bearer <token>`
+Todos los endpoints (excepto `/api/auth/**` y `/api/estado`) requieren el encabezado `Authorization: Bearer <token>`.
 
 | Método | Ruta | Descripción |
 |---|---|---|
-| POST | `/api/auth/registro` | Crear cuenta (queda `PENDIENTE` salvo que sea el `ADMIN_EMAIL`) |
-| POST | `/api/auth/login` | Login → devuelve `{ token, userId, email, nombre, estado, rol }` |
-| GET | `/api/admin/usuarios/pendientes` | (solo ADMIN) listar cuentas por aprobar |
-| POST | `/api/admin/usuarios/{id}/aprobar` | (solo ADMIN) aprobar cuenta |
-| POST | `/api/admin/usuarios/{id}/rechazar` | (solo ADMIN) rechazar cuenta |
-| GET | `/api/registros` | Listar turnos de la quincena actual |
-| POST | `/api/registros` | Guardar/actualizar un día (`NORMAL`, `INCAPACIDAD`, `COMPENSATORIO`, `NO_LABORADO`) |
-| DELETE | `/api/registros/{fecha}` | Eliminar un día (`YYYY-MM-DD`) |
-| GET | `/api/registros/resumen` | IBC, transporte, deducciones, neto |
-| POST | `/api/registros/recalcular` | Recalcula todos los turnos NORMAL con el motor actual |
-| GET | `/api/config` | Configuración salarial del usuario |
-| PUT | `/api/config` | Actualizar configuración salarial |
-| GET | `/api/historial` | Listar quincenas cerradas |
-| POST | `/api/historial/cerrar-quincena` | Cierra la quincena actual y la mueve al historial |
-| DELETE | `/api/historial/{id}` | Eliminar una quincena del historial |
-| POST | `/api/ai/chat` | `{ mensaje, historialReciente: [] }` → `{ respuesta }` |
+| `POST` | `/api/auth/registro` | Registro de usuario (estado inicial `PENDIENTE`) |
+| `POST` | `/api/auth/login` | Inicio de sesión y emisión de token JWT |
+| `GET` | `/api/admin/usuarios/pendientes` | Listado de cuentas pendientes de aprobación (`ADMIN`) |
+| `POST` | `/api/admin/usuarios/{id}/aprobar` | Aprobación de cuenta de usuario (`ADMIN`) |
+| `POST` | `/api/admin/usuarios/{id}/rechazar` | Rechazo de cuenta de usuario (`ADMIN`) |
+| `GET` | `/api/registros` | Consulta de turnos registrados en la quincena activa |
+| `POST` | `/api/registros` | Creación o actualización de un turno o novedad diaria |
+| `DELETE` | `/api/registros/{fecha}` | Eliminación de un registro por fecha (`YYYY-MM-DD`) |
+| `GET` | `/api/registros/resumen` | Liquidación consolidada (IBC, transporte, deducciones y neto) |
+| `POST` | `/api/registros/recalcular` | Recálculo integral de los turnos de la quincena activa |
+| `GET` / `PUT` | `/api/config` | Consulta y actualización de parámetros salariales del usuario |
+| `GET` | `/api/historial` | Consulta de quincenas cerradas en el historial |
+| `POST` | `/api/historial/cerrar-quincena` | Cierre de la quincena actual y almacenamiento de snapshot |
+| `POST` | `/api/ai/chat` | Consulta al agente inteligente con contexto de nómina del usuario |
+| `GET` | `/api/analytics/dw` | Extracción ETL del modelo dimensional en estrella y KPIs para Power BI |
+| `GET` | `/api/optimizacion/catalogo` | Catálogo de turnos candidatos para el modelo matemático |
+| `POST` | `/api/optimizacion/turnos` | Resolución del modelo PLE de asignación óptima de turnos |
 
-## 5. Qué se portó y qué quedó simplificado
+---
 
-**Portado 1:1 desde el JS original:**
-- Motor de cálculo de nómina (`PayrollEngine`): descanso no remunerado, límites
-  diarios (10h / 8h dom-fest), contador semanal de 44h→42h, clasificación
-  minuto a minuto de horas ordinarias/extra/nocturnas/dominicales, y los dos
-  cortes legales de julio 2026 (dominical 90%, jornada 42h, valor hora $8.337).
-- Reglas de incapacidad (100% del salario diario, hasta 4 días) y compensatorio
-  (valor fijo).
-- Cálculo de IBC, auxilio de transporte, deducciones 8% (salud+pensión) y neto.
+## Requisitos e Instalación
 
-**Simplificado a propósito (para no sobre-extender el alcance):**
-- **Festivos**: lista fija de 2026 en `FestivosService` (antes se consultaba una
-  API pública en el frontend). Si necesitas años futuros, amplía esa lista o
-  agrega una llamada `@Scheduled` a `date.nager.at` con caché.
-- **PDF / Excel**: la generación con `jsPDF` / `SheetJS` puede seguir siendo
-  100% client-side (ya funciona con los datos que te devuelven `/api/registros`
-  y `/api/historial`); no hacía falta moverla al backend.
-- **Temas de color / modo oscuro**: es UI pura, no toca el backend, no se tocó.
+### Requisitos Previos
 
-## 6. Adaptar el frontend (el HTML que ya tienes)
+- **Java JDK 17** o superior
+- **Apache Maven 3.9+**
+- **PostgreSQL 14+** *(requerido para el perfil `prod`; el perfil `dev` utiliza H2 embebida automáticamente)*
 
-Tu HTML actual llama directamente a Firebase (`signInWithEmailAndPassword`,
-`setDoc`, etc.) y a un servidor Node en Render para la IA. Hay que reemplazar
-**solo** esas partes por `fetch` a esta API. Los `id`s del DOM, el CSS y toda la
-lógica de UI (pestañas, gráficos, exportar PDF/Excel, temas) **no cambian**.
+### Configuración de Variables de Entorno
 
-Puntos exactos a reemplazar en tu archivo:
+1. Clonar el repositorio:
+   ```bash
+   git clone https://github.com/Troconisandres1/Mi-nomina.git
+   cd Mi-nomina
+   ```
+2. Crear el archivo local de variables a partir de la plantilla incluida (sin exponer credenciales en el control de versiones):
+   ```powershell
+   Copy-Item run-local.ps1.example run-local.ps1
+   ```
+3. Configurar en `run-local.ps1` (o mediante variables de entorno del sistema) los valores correspondientes:
+   - `JWT_SECRET`: Clave secreta de al menos 32 caracteres para la firma de tokens JWT.
+   - `GEMINI_API_KEYS`: Clave(s) de API de Google Gemini.
+   - `ADMIN_EMAIL`: Correo electrónico del administrador principal.
+   - `SPRING_PROFILES_ACTIVE`: `dev` (H2 local) o `prod` (PostgreSQL).
+   - `DB_URL`, `DB_USER`, `DB_PASSWORD`: Credenciales de conexión a PostgreSQL para el perfil `prod`.
 
-1. **Bloque `<script type="module">` de Firebase** → bórralo completo y usa
-   `fetch` a `/api/auth/login` y `/api/auth/registro`. Guarda el `token` que
-   te devuelven en `localStorage` (o en memoria) y mándalo como
-   `Authorization: Bearer <token>` en cada llamada.
-2. **`window.saveToCloud`** → en vez de `setDoc(doc(fb_db,...))`, hacer
-   `POST /api/registros` (por cada registro nuevo/editado), `PUT /api/config`,
-   `POST /api/historial/cerrar-quincena`, etc. según qué cambió.
-3. **`syncFromCloud`** → `GET /api/registros` + `GET /api/config` +
-   `GET /api/historial` al iniciar sesión, y llenar `window.db`,
-   `window.cfg`, `window.historialDB` igual que antes.
-4. **`window.AI_URL` / `sendChat()`** → cambia la URL a
-   `TU_BACKEND/api/ai/chat` y el body a `{ mensaje, historialReciente }`;
-   la respuesta llega en `data.respuesta` en vez de
-   `data.candidates[0].content.parts[...]` (eso ya lo arma el backend).
+### Ejecución
 
-Te dejo un archivo de ejemplo (`frontend-adapter-example.js`) con las 4 piezas
-reescritas y comentadas para que las copies dentro de tu HTML en lugar del
-bloque de Firebase. No reemplaza el archivo completo a propósito: es más
-seguro que integres estas piezas tú mismo revisando que cada `id` del DOM siga
-coincidiendo con tu versión actual del HTML.
+- **En entorno de desarrollo (`dev`):**
+  ```powershell
+  .\run-local.ps1
+  ```
+  O directamente con Maven:
+  ```bash
+  mvn spring-boot:run
+  ```
+  La aplicación estará disponible en `http://localhost:8080/`.
 
-## 7. Por qué "sin Firebase" pero antes había una contradicción
-
-Pediste explícitamente "todo, sin Firebase", así que la autenticación quedó
-100% en Spring Boot con JWT + bcrypt (no se usa Firebase Auth para nada). El
-flujo de aprobación manual de cuentas (`PENDIENTE` → `APROBADO`) se mantiene
-igual que tenías, solo que ahora lo apruebas con
-`POST /api/admin/usuarios/{id}/aprobar` en vez de cambiar un campo en
-Firestore Console.
+- **Ejecución de pruebas unitarias y cobertura (JaCoCo):**
+  ```bash
+  mvn clean test
+  ```

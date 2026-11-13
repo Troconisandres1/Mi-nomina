@@ -1,0 +1,5 @@
+﻿"idTipoDia","codigo","descripcion","remunerado"
+"1","NORMAL","Turno laborado","True"
+"2","INCAPACIDAD","Incapacidad mÃ©dica","True"
+"3","COMPENSATORIO","DÃ­a compensatorio","True"
+"4","NO_LABORADO","No citado / Descanso","False"

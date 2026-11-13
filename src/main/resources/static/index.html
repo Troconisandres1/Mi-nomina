@@ -519,7 +519,7 @@
     }
 
     /* ── Nav — DESKTOP (fill full width) ── */
-    @media (min-width: 769px) {
+    @media (min-width: 601px) {
       .nav {
         width: 100%;
         justify-content: space-between;
@@ -533,7 +533,7 @@
     }
 
     /* ── Nav — MOBILE (floating pill bottom tab bar) ── */
-    @media (max-width: 768px) {
+    @media (max-width: 600px) {
       .nav {
         position: fixed;
         bottom: calc(0.85rem + env(safe-area-inset-bottom, 0px));
@@ -3448,10 +3448,14 @@
             data-lucide="clipboard-list" style="width:18px;height:18px;"></i></span>Registros</button>
       <button class="nav-btn" onclick="showTab('dashboard', this)"><span class="tab-icon"><i
             data-lucide="layout-dashboard" style="width:18px;height:18px;"></i></span>Resumen</button>
+      <button class="nav-btn" onclick="showTab('powerbi', this)"><span class="tab-icon"><i
+            data-lucide="bar-chart-3" style="width:18px;height:18px;"></i></span>Dashboard</button>
       <button class="nav-btn" onclick="showTab('asistente', this)"><span class="tab-icon"><i data-lucide="sparkles"
             style="width:18px;height:18px;"></i></span>Asistente</button>
       <button class="nav-btn" onclick="showTab('resumen', this)"><span class="tab-icon"><i data-lucide="banknote"
             style="width:18px;height:18px;"></i></span>Nómina</button>
+      <button class="nav-btn" onclick="showTab('optimizador', this)"><span class="tab-icon"><i data-lucide="cpu"
+            style="width:18px;height:18px;"></i></span>Optimizar</button>
       <button class="nav-btn" onclick="showTab('config', this)"><span class="tab-icon"><i data-lucide="settings"
             style="width:18px;height:18px;"></i></span>Ajustes</button>
       <button class="nav-btn hidden" id="navAdminBtn" onclick="showTab('admin', this)"><span class="tab-icon"><i data-lucide="shield-check"
@@ -3647,6 +3651,205 @@
 
       <div class="tip-box" id="dashTip">
         Registra días para ver tu análisis de quincena aquí.
+      </div>
+    </div>
+
+    <!-- ═══ DASHBOARD POWER BI & DATA WAREHOUSE (VD II) ═══ -->
+    <div id="powerbi" class="tab-content hidden">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:1rem;margin-bottom:1.25rem;">
+          <div>
+            <div style="font-size:.68rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);margin-bottom:.25rem;">
+              Visualización de Datos II · Modelo Dimensional (Kimball)</div>
+            <div style="font-family:var(--font-sans);font-size:1.45rem;font-weight:600;color:var(--text);">
+              Dashboard Interactivo Power BI y Data Warehouse</div>
+            <div style="font-size:.82rem;color:var(--muted);margin-top:.2rem;">
+              Proceso ETL integrado desde la base transaccional con anonimización SHA-256 (Ley 1581 de 2012) hacia el Esquema en Estrella (1 tabla de hechos y 5 dimensiones).
+            </div>
+          </div>
+          <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+            <button class="btn btn-ghost" onclick="exportarModeloEstrellaExcel()" style="padding:.55rem .95rem;font-size:.75rem;">
+              Exportar Esquema Estrella (.xlsx)
+            </button>
+            <button class="btn btn-ghost" onclick="exportarModeloEstrellaJson()" style="padding:.55rem .95rem;font-size:.75rem;">
+              Descargar ETL JSON (/api/analytics/dw)
+            </button>
+          </div>
+        </div>
+
+        <!-- Resumen de tablas del Esquema en Estrella -->
+        <div class="dash-kpi-grid" style="margin-bottom:1.2rem;">
+          <div class="kpi-card">
+            <div class="kpi-label">Hecho_Turno</div>
+            <div class="kpi-val accent" id="dwCountHechos">0</div>
+            <div class="kpi-sub">registros de hechos (grano diario)</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Dim_Fecha / Dim_Quincena</div>
+            <div class="kpi-val info" id="dwCountFechas">0 / 1</div>
+            <div class="kpi-sub">fechas únicas y periodos</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Dim_Usuario (Anonimizada)</div>
+            <div class="kpi-val success" id="dwAnonUser" style="font-size:1.1rem;font-family:var(--font-mono);">USR-ANON</div>
+            <div class="kpi-sub">hash SHA-256 sin PII</div>
+          </div>
+        </div>
+
+        <!-- Configuración e incrustación de Power BI -->
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:1rem;margin-bottom:1rem;">
+          <div style="font-size:.72rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem;">
+            Conexión / Incrustación de Informe Interactivo Power BI</div>
+          <div style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;">
+            <input type="url" id="powerBiUrlInput" class="input"
+              placeholder="Pegar enlace de publicación de Power BI (https://app.powerbi.com/view?r=...)"
+              style="flex:1;min-width:240px;padding:.55rem .85rem;font-size:.82rem;">
+            <button class="btn btn-primary" onclick="guardarUrlPowerBi()" style="padding:.55rem 1.1rem;font-size:.76rem;">
+              Vincular Power BI
+            </button>
+            <button class="btn btn-ghost" onclick="alternarVistaPowerBi()" style="padding:.55rem .9rem;font-size:.76rem;">
+              Vista Previa 3 Páginas BI
+            </button>
+          </div>
+          <div style="font-size:.72rem;color:var(--muted);margin-top:.45rem;">
+            Endpoint Web para Power BI Desktop (Obtener datos → Web): <code style="font-family:var(--font-mono);color:var(--accent);" id="dwEndpointUrlLabel">/api/analytics/dw</code>
+          </div>
+        </div>
+
+        <!-- Contenedor iframe Power BI cuando se configura URL -->
+        <div id="powerBiIframeWrap" class="hidden" style="margin-bottom:1rem;">
+          <iframe id="powerBiIframe" title="Dashboard Power BI - Mi Nómina"
+            style="width:100%;height:560px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);"
+            allowfullscreen="true"></iframe>
+        </div>
+
+        <!-- Vista interactiva de las 3 páginas del prototipo Power BI -->
+        <div id="powerBiPreviewWrap" style="border:1px solid var(--border);border-radius:var(--radius-sm);padding:1rem;background:var(--surface);">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem;margin-bottom:1rem;border-bottom:1px solid var(--border);padding-bottom:.75rem;">
+            <div style="display:flex;gap:.4rem;flex-wrap:wrap;">
+              <button class="btn btn-primary" id="pbiPageBtn1" onclick="mostrarPaginaPbi(1)" style="padding:.4rem .85rem;font-size:.72rem;">Pág 1 · Resumen Ejecutivo</button>
+              <button class="btn btn-ghost" id="pbiPageBtn2" onclick="mostrarPaginaPbi(2)" style="padding:.4rem .85rem;font-size:.72rem;">Pág 2 · Detalle por Concepto</button>
+              <button class="btn btn-ghost" id="pbiPageBtn3" onclick="mostrarPaginaPbi(3)" style="padding:.4rem .85rem;font-size:.72rem;">Pág 3 · Comparación de Quincenas</button>
+            </div>
+            <span style="font-size:.7rem;font-family:var(--font-mono);color:var(--muted);">Esquema Estrella · 5 Dimensiones · 1 Hecho</span>
+          </div>
+          <div id="pbiPageContent" style="font-size:.83rem;color:var(--text);"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ OPTIMIZADOR DE TURNOS — INVESTIGACIÓN DE OPERACIONES (PLE) ═══ -->
+    <div id="optimizador" class="tab-content hidden">
+      <div class="card" style="margin-bottom:1.5rem;">
+        <div style="font-size:.68rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);margin-bottom:.25rem;">
+          Investigación de Operaciones · Programación Lineal Entera Binaria (PLE)</div>
+        <div style="font-family:var(--font-sans);font-size:1.45rem;font-weight:600;color:var(--text);margin-bottom:.4rem;">
+          Optimización de Asignación Quincenal de Turnos</div>
+        <div style="font-size:.82rem;color:var(--muted);margin-bottom:1.25rem;">
+          Determina la combinación óptima de turnos (<code>x<sub>d,s</sub> &isin; {0, 1}</code>) que <strong>maximiza el ingreso neto quincenal</strong> respetando el límite semanal de horas ordinarias (Ley 2101 de 2021: 42 h), límites diarios, descanso mínimo entre jornadas y días máximos consecutivos.
+        </div>
+
+        <!-- Formulación matemática resumida -->
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:1rem;margin-bottom:1.25rem;font-size:.8rem;line-height:1.65;">
+          <div style="font-weight:700;color:var(--accent);margin-bottom:.35rem;text-transform:uppercase;font-size:.7rem;letter-spacing:.08em;">
+            Modelo Matemático Implementado (Ramificación y Acotamiento — Branch &amp; Bound)</div>
+          <div style="font-family:var(--font-mono);font-size:.78rem;color:var(--text);margin-bottom:.5rem;">
+            Maximizar Z = &Sigma;<sub>d &isin; D</sub> &Sigma;<sub>s &isin; S</sub> v<sub>d,s</sub> &middot; x<sub>d,s</sub> &nbsp;&nbsp; con x<sub>d,s</sub> &isin; {0, 1}
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:.5rem;color:var(--muted);font-size:.76rem;">
+            <div><strong>R1 (Unicidad diaria):</strong> &Sigma;<sub>s &isin; S</sub> x<sub>d,s</sub> &le; 1 &forall;d &isin; D</div>
+            <div><strong>R2 (Tope semanal):</strong> &Sigma;<sub>d &isin; w</sub> &Sigma;<sub>s</sub> h<sup>ord</sup><sub>d,s</sub> x<sub>d,s</sub> &le; L<sub>w</sub> (42 h / 44 h)</div>
+            <div><strong>R3 (Tope diario y extra):</strong> h<sup>ord</sup> &le; 10h hábil / 8h festivo; extras &le; 12h/sem</div>
+            <div><strong>R4 (Descanso y continuidad):</strong> Descanso &ge; 12h entre turnos y máx. días seguidos</div>
+          </div>
+        </div>
+
+        <!-- Parámetros del modelo -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.85rem;margin-bottom:1.25rem;">
+          <div>
+            <label style="display:block;font-size:.72rem;font-weight:600;color:var(--muted);margin-bottom:.35rem;">Fecha Inicio Quincena</label>
+            <input type="date" id="optFechaInicio" class="input" value="2026-11-01" style="width:100%;padding:.55rem .75rem;">
+          </div>
+          <div>
+            <label style="display:block;font-size:.72rem;font-weight:600;color:var(--muted);margin-bottom:.35rem;">Máx. Días Consecutivos (R4)</label>
+            <input type="number" id="optMaxConsec" class="input" value="6" min="3" max="6" style="width:100%;padding:.55rem .75rem;">
+          </div>
+          <div>
+            <label style="display:block;font-size:.72rem;font-weight:600;color:var(--muted);margin-bottom:.35rem;">Descanso Mín. Entre Turnos (h)</label>
+            <input type="number" id="optDescansoMin" class="input" value="12" min="8" max="16" style="width:100%;padding:.55rem .75rem;">
+          </div>
+          <div>
+            <label style="display:block;font-size:.72rem;font-weight:600;color:var(--muted);margin-bottom:.35rem;">Máx. Días Laborados ( de 15)</label>
+            <input type="number" id="optMaxDiasQ" class="input" value="13" min="8" max="14" style="width:100%;padding:.55rem .75rem;">
+          </div>
+        </div>
+
+        <div style="display:flex;gap:.75rem;flex-wrap:wrap;align-items:center;">
+          <button class="btn btn-primary" id="btnEjecutarOptimizador" onclick="ejecutarOptimizacionTurnos()" style="padding:.65rem 1.4rem;">
+            Resolver Modelo PLE (Branch &amp; Bound)
+          </button>
+          <span id="optStatusMsg" style="font-size:.78rem;color:var(--muted);"></span>
+        </div>
+      </div>
+
+      <!-- Resultados del optimizador -->
+      <div id="optResultadosWrap" class="hidden">
+        <div class="dash-kpi-grid" style="margin-bottom:1.25rem;">
+          <div class="kpi-card">
+            <div class="kpi-label">Ingreso Neto Óptimo (Z*)</div>
+            <div class="kpi-val accent" id="optValOptimo">$0</div>
+            <div class="kpi-sub" id="optSubOptimo">solución exacta PLE</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Asignación Manual Base</div>
+            <div class="kpi-val info" id="optValManual">$0</div>
+            <div class="kpi-sub">turnos diurnos sin optimizar</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Ganancia Neta del Modelo</div>
+            <div class="kpi-val success" id="optValGanancia">+$0</div>
+            <div class="kpi-sub" id="optSubGananciaPct">+0% frente a asignación manual</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Horas Totales / Nocturnas</div>
+            <div class="kpi-val" id="optValHoras">0h</div>
+            <div class="kpi-sub" id="optSubNocFest">0h nocturnas · 0h festivas</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Días Laborados / Descanso</div>
+            <div class="kpi-val accent" id="optValDias">0 / 0</div>
+            <div class="kpi-sub" id="optSubLimiteSem">tope legal 42h/sem cumplido</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Rendimiento del Solver</div>
+            <div class="kpi-val info" id="optValSolver">0 ms</div>
+            <div class="kpi-sub" id="optSubNodos">0 nodos explorados</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem;margin-bottom:1rem;">
+            <div style="font-size:.75rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);">
+              Plan Quincenal Óptimo de Turnos (x<sub>d,s</sub> = 1) vs. Asignación Manual</div>
+          </div>
+          <div style="overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:.8rem;" id="optTablaTurnos">
+              <thead>
+                <tr style="border-bottom:2px solid var(--border);text-align:left;color:var(--muted);font-size:.72rem;text-transform:uppercase;">
+                  <th style="padding:.6rem .5rem;">Día</th>
+                  <th style="padding:.6rem .5rem;">Fecha</th>
+                  <th style="padding:.6rem .5rem;">Tipo Día</th>
+                  <th style="padding:.6rem .5rem;">Turno Óptimo (PLE)</th>
+                  <th style="padding:.6rem .5rem;">Horario</th>
+                  <th style="padding:.6rem .5rem;">H. Ord / Ext / Noc</th>
+                  <th style="padding:.6rem .5rem;">Neto Óptimo</th>
+                  <th style="padding:.6rem .5rem;">Neto Manual</th>
+                </tr>
+              </thead>
+              <tbody id="optTablaBody"></tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -4746,6 +4949,8 @@
       }
       if (t === 'resumen') renderAll();
       if (t === 'dashboard') renderDashboard();
+      if (t === 'powerbi') { if (typeof cargarDatosDwPowerBi === 'function') cargarDatosDwPowerBi(); }
+      if (t === 'optimizador') { if (typeof inicializarOptimizador === 'function') inicializarOptimizador(); }
       if (t === 'config') renderFestivos();
       if (t === 'asistente') loadApiKey();
       if (t === 'admin') cargarPendientes();
@@ -4757,7 +4962,7 @@
       if (!ind || !btn || !nav) return;
       const navRect = nav.getBoundingClientRect();
       const btnRect = btn.getBoundingClientRect();
-      const isDesktop = window.matchMedia('(min-width: 769px)').matches;
+      const isDesktop = window.matchMedia('(min-width: 601px)').matches;
       const pad = isDesktop ? 2 : 0;
       ind.style.opacity = '1';
       ind.style.transform = `translate(${(btnRect.left - navRect.left) + nav.scrollLeft - pad}px, ${(btnRect.top - navRect.top) + nav.scrollTop - pad}px)`;
@@ -6777,6 +6982,279 @@ REGLAS:
         setTimeout(() => { if (tip.parentElement) tip.remove(); }, 8000);
       }
     })();
+  </script>
+
+  <!-- ── Módulos Interdisciplinarios: Data Warehouse / Power BI (VD II) y Optimizador PLE (IO) ── -->
+  <script>
+    window._ultimoDwPayload = null;
+    window._pbiPaginaActual = 1;
+
+    async function cargarDatosDwPowerBi() {
+      const lblUrl = document.getElementById('dwEndpointUrlLabel');
+      if (lblUrl) lblUrl.innerText = API_BASE + '/analytics/dw';
+
+      try {
+        const savedUrl = localStorage.getItem('nomina_powerbi_url') || '';
+        const input = document.getElementById('powerBiUrlInput');
+        if (input && savedUrl) input.value = savedUrl;
+        if (savedUrl) {
+          const wrap = document.getElementById('powerBiIframeWrap');
+          const ifr = document.getElementById('powerBiIframe');
+          if (wrap && ifr) {
+            ifr.src = savedUrl;
+            wrap.classList.remove('hidden');
+          }
+        }
+      } catch (e) {}
+
+      try {
+        const res = await fetch(`${API_BASE}/analytics/dw`, { headers: authHeaders() });
+        if (res.ok) {
+          window._ultimoDwPayload = await res.json();
+        }
+      } catch (e) {}
+
+      const dw = window._ultimoDwPayload;
+      if (dw) {
+        const elHechos = document.getElementById('dwCountHechos');
+        const elFechas = document.getElementById('dwCountFechas');
+        const elAnon = document.getElementById('dwAnonUser');
+        if (elHechos) elHechos.innerText = (dw.hechoTurno || []).length;
+        if (elFechas) elFechas.innerText = `${(dw.dimFecha || []).length} / ${(dw.dimQuincena || []).length}`;
+        if (elAnon && dw.dimUsuario && dw.dimUsuario[0]) elAnon.innerText = dw.dimUsuario[0].idUsuarioDw;
+      }
+      mostrarPaginaPbi(window._pbiPaginaActual || 1);
+    }
+
+    function guardarUrlPowerBi() {
+      const input = document.getElementById('powerBiUrlInput');
+      if (!input) return;
+      const url = input.value.trim();
+      try {
+        if (url) localStorage.setItem('nomina_powerbi_url', url);
+        else localStorage.removeItem('nomina_powerbi_url');
+      } catch (e) {}
+      const wrap = document.getElementById('powerBiIframeWrap');
+      const ifr = document.getElementById('powerBiIframe');
+      if (url && wrap && ifr) {
+        ifr.src = url;
+        wrap.classList.remove('hidden');
+      } else if (wrap) {
+        wrap.classList.add('hidden');
+      }
+    }
+
+    function alternarVistaPowerBi() {
+      const prev = document.getElementById('powerBiPreviewWrap');
+      if (!prev) return;
+      prev.classList.toggle('hidden');
+    }
+
+    function mostrarPaginaPbi(numPagina) {
+      window._pbiPaginaActual = numPagina;
+      [1, 2, 3].forEach(n => {
+        const b = document.getElementById('pbiPageBtn' + n);
+        if (b) {
+          b.className = (n === numPagina) ? 'btn btn-primary' : 'btn btn-ghost';
+        }
+      });
+
+      const cont = document.getElementById('pbiPageContent');
+      if (!cont) return;
+      const fmt = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 });
+      const dw = window._ultimoDwPayload;
+      const k = dw && dw.kpis ? dw.kpis : {
+        netoActual: 0, netoProyectado15Dias: 0, ingresoPromedioPorDia: 0,
+        totalHorasLaboradas: 0, porcentajeHorasNocturnas: 0, porcentajeHorasFestivas: 0,
+        diasRegistradosQuincena: (window.db || []).length, cumplimientoMeta15DiasPct: 0,
+        promedioQuincenasAnteriores: 0, variacionEntreQuincenasPct: 0
+      };
+
+      if (numPagina === 1) {
+        cont.innerHTML = `
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:.75rem;">
+            <div style="padding:.85rem;background:var(--surface2);border-radius:12px;border:1px solid var(--border);">
+              <div style="font-size:.68rem;color:var(--muted);text-transform:uppercase;font-weight:700;">KPI · Neto Proyectado (15d)</div>
+              <div style="font-size:1.25rem;font-weight:700;color:var(--accent);margin-top:.2rem;">${fmt.format(k.netoProyectado15Dias)}</div>
+              <div style="font-size:.72rem;color:var(--muted);">Neto actual: ${fmt.format(k.netoActual)}</div>
+            </div>
+            <div style="padding:.85rem;background:var(--surface2);border-radius:12px;border:1px solid var(--border);">
+              <div style="font-size:.68rem;color:var(--muted);text-transform:uppercase;font-weight:700;">KPI · Promedio Neto / Día</div>
+              <div style="font-size:1.25rem;font-weight:700;color:var(--success);margin-top:.2rem;">${fmt.format(k.ingresoPromedioPorDia)}</div>
+              <div style="font-size:.72rem;color:var(--muted);">${k.diasRegistradosQuincena} de 15 días (${k.cumplimientoMeta15DiasPct}%)</div>
+            </div>
+            <div style="padding:.85rem;background:var(--surface2);border-radius:12px;border:1px solid var(--border);">
+              <div style="font-size:.68rem;color:var(--muted);text-transform:uppercase;font-weight:700;">KPI · % Horas Nocturnas y Festivas</div>
+              <div style="font-size:1.25rem;font-weight:700;color:var(--info);margin-top:.2rem;">${k.porcentajeHorasNocturnas}% Noc · ${k.porcentajeHorasFestivas}% Fest</div>
+              <div style="font-size:.72rem;color:var(--muted);">Total laborado: ${k.totalHorasLaboradas}h</div>
+            </div>
+          </div>
+        `;
+      } else if (numPagina === 2) {
+        const tiposH = (dw && dw.dimTipoHora) ? dw.dimTipoHora : [];
+        const filas = tiposH.map(th => `
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:.4rem;font-family:var(--font-mono);">${th.codigo}</td>
+            <td style="padding:.4rem;">${th.nombre}</td>
+            <td style="padding:.4rem;">${th.categoria}</td>
+            <td style="padding:.4rem;font-weight:600;color:var(--accent);">+${th.porcentajeRecargo2026}%</td>
+          </tr>
+        `).join('');
+        cont.innerHTML = `
+          <div style="font-size:.76rem;color:var(--muted);margin-bottom:.5rem;">Dimensión <code>Dim_TipoHora</code> vinculada a <code>Hecho_Turno</code>:</div>
+          <div style="overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:.78rem;">
+              <thead>
+                <tr style="border-bottom:2px solid var(--border);text-align:left;color:var(--muted);">
+                  <th style="padding:.4rem;">Código</th>
+                  <th style="padding:.4rem;">Concepto</th>
+                  <th style="padding:.4rem;">Categoría BI</th>
+                  <th style="padding:.4rem;">Recargo Vigente 2026</th>
+                </tr>
+              </thead>
+              <tbody>${filas || '<tr><td colspan="4" style="padding:.5rem;">Cargando dimensión...</td></tr>'}</tbody>
+            </table>
+          </div>
+        `;
+      } else {
+        const quincenas = (dw && dw.dimQuincena) ? dw.dimQuincena : [];
+        const filasQ = quincenas.map(q => `
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:.45rem;font-family:var(--font-mono);">${q.idQuincena}</td>
+            <td style="padding:.45rem;">${q.periodo}</td>
+            <td style="padding:.45rem;"><span style="padding:.15rem .5rem;border-radius:99px;background:var(--accent-dim);color:var(--accent);font-size:.7rem;font-weight:600;">${q.estado}</span></td>
+            <td style="padding:.45rem;font-weight:700;">${fmt.format(q.netoTotal)}</td>
+          </tr>
+        `).join('');
+        cont.innerHTML = `
+          <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:.5rem;margin-bottom:.6rem;font-size:.78rem;">
+            <span>Promedio histórico cerrado: <strong>${fmt.format(k.promedioQuincenasAnteriores)}</strong></span>
+            <span>Variación proyectada vs. historial: <strong style="color:var(--accent);">${k.variacionEntreQuincenasPct >= 0 ? '+' : ''}${k.variacionEntreQuincenasPct}%</strong></span>
+          </div>
+          <div style="overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:.78rem;">
+              <thead>
+                <tr style="border-bottom:2px solid var(--border);text-align:left;color:var(--muted);">
+                  <th style="padding:.4rem;">ID Dim_Quincena</th>
+                  <th style="padding:.4rem;">Periodo</th>
+                  <th style="padding:.4rem;">Estado</th>
+                  <th style="padding:.4rem;">Neto Consolidado</th>
+                </tr>
+              </thead>
+              <tbody>${filasQ || '<tr><td colspan="4" style="padding:.5rem;">Sin periodos registrados</td></tr>'}</tbody>
+            </table>
+          </div>
+        `;
+      }
+    }
+
+    async function exportarModeloEstrellaExcel() {
+      if (!window._ultimoDwPayload) await cargarDatosDwPowerBi();
+      const dw = window._ultimoDwPayload;
+      if (!dw || typeof XLSX === 'undefined') return;
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(dw.hechoTurno || []), 'Hecho_Turno');
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(dw.dimFecha || []), 'Dim_Fecha');
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(dw.dimUsuario || []), 'Dim_Usuario');
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(dw.dimTipoDia || []), 'Dim_TipoDia');
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(dw.dimTipoHora || []), 'Dim_TipoHora');
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(dw.dimQuincena || []), 'Dim_Quincena');
+      XLSX.writeFile(wb, 'MiNomina_DataWarehouse_Estrella.xlsx');
+    }
+
+    async function exportarModeloEstrellaJson() {
+      if (!window._ultimoDwPayload) await cargarDatosDwPowerBi();
+      const dw = window._ultimoDwPayload || {};
+      const blob = new Blob([JSON.stringify(dw, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'MiNomina_ETL_EsquemaEstrella.json';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    // ── Optimizador de Turnos (Investigación de Operaciones - PLE) ──
+    let _optInicializado = false;
+    function inicializarOptimizador() {
+      if (_optInicializado) return;
+      _optInicializado = true;
+      ejecutarOptimizacionTurnos();
+    }
+
+    async function ejecutarOptimizacionTurnos() {
+      const statusEl = document.getElementById('optStatusMsg');
+      const wrapEl = document.getElementById('optResultadosWrap');
+      if (statusEl) statusEl.innerText = 'Ejecutando algoritmo Branch & Bound...';
+
+      const fechaInicio = (document.getElementById('optFechaInicio') || {}).value || '2026-11-01';
+      const maxDiasConsecutivos = parseInt((document.getElementById('optMaxConsec') || {}).value || '6', 10);
+      const descansoMinimoHoras = parseInt((document.getElementById('optDescansoMin') || {}).value || '12', 10);
+      const maxDiasLaborablesQuincena = parseInt((document.getElementById('optMaxDiasQ') || {}).value || '13', 10);
+
+      try {
+        const res = await fetch(`${API_BASE}/optimizacion/turnos`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...authHeaders() },
+          body: JSON.stringify({
+            fechaInicio,
+            diasHorizonte: 15,
+            maxDiasConsecutivos,
+            descansoMinimoHoras,
+            maxDiasLaborablesQuincena
+          })
+        });
+        if (!res.ok) throw new Error('Error HTTP ' + res.status);
+        const data = await res.json();
+        renderizarResultadoOptimizacion(data);
+        if (statusEl) statusEl.innerText = `Solución óptima global hallada en ${data.tiempoEjecucionMs} ms (${data.nodosExplorados} nodos evaluados).`;
+        if (wrapEl) wrapEl.classList.remove('hidden');
+      } catch (e) {
+        if (statusEl) statusEl.innerText = 'Error al consultar el optimizador: ' + e.message;
+      }
+    }
+
+    function renderizarResultadoOptimizacion(data) {
+      const fmt = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 });
+      document.getElementById('optValOptimo').innerText = fmt.format(data.objetivoOptimoNeto || 0);
+      document.getElementById('optSubOptimo').innerText = `Bruto: ${fmt.format(data.totalBrutoOptimo || 0)} · Deducciones: -${fmt.format(data.totalDeduccionesOptimo || 0)}`;
+      document.getElementById('optValManual').innerText = fmt.format(data.ingresoNetoAsignacionManual || 0);
+      document.getElementById('optValGanancia').innerText = '+' + fmt.format(data.gananciaNetoCOP || 0);
+      document.getElementById('optSubGananciaPct').innerText = `+${(data.gananciaPorcentaje || 0).toFixed(1)}% de incremento neto quincenal`;
+      document.getElementById('optValHoras').innerText = `${data.totalHorasOptimo || 0}h`;
+      document.getElementById('optSubNocFest').innerText = `${data.totalHorasNocturnasOptimo || 0}h nocturnas · ${data.totalHorasFestivasOptimo || 0}h dom/fest`;
+      document.getElementById('optValDias').innerText = `${data.diasLaboradosOptimo || 0} lab / ${data.diasDescansoOptimo || 0} desc`;
+      document.getElementById('optSubLimiteSem').innerText = `Tope legal ${data.limiteSemanalHoras || 42}h/sem respetado`;
+      document.getElementById('optValSolver').innerText = `${data.tiempoEjecucionMs || 1} ms`;
+      document.getElementById('optSubNodos').innerText = `${data.nodosExplorados || 0} nodos Branch & Bound`;
+
+      const tbody = document.getElementById('optTablaBody');
+      if (!tbody) return;
+      const planOpt = data.planOptimo || [];
+      const planMan = data.planManualReferencia || [];
+
+      tbody.innerHTML = planOpt.map((dia, i) => {
+        const man = planMan[i] || { ingresoNeto: 0 };
+        const badgeDia = dia.esDomingoOFestivo
+          ? '<span style="padding:.15rem .45rem;border-radius:99px;background:var(--accent-dim);color:var(--accent);font-weight:700;font-size:.68rem;">Dom/Fest (+90%)</span>'
+          : '<span style="color:var(--muted);font-size:.74rem;">Hábil</span>';
+        const badgeTurno = dia.descansa
+          ? '<span style="color:var(--muted);font-style:italic;">Descanso obligatorio (x=0)</span>'
+          : `<strong style="color:var(--text);">${dia.nombreTurno}</strong>`;
+        return `
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:.55rem .5rem;font-family:var(--font-mono);">D${dia.diaIndice}</td>
+            <td style="padding:.55rem .5rem;font-family:var(--font-mono);">${dia.fecha}</td>
+            <td style="padding:.55rem .5rem;">${badgeDia}</td>
+            <td style="padding:.55rem .5rem;">${badgeTurno}</td>
+            <td style="padding:.55rem .5rem;font-family:var(--font-mono);font-size:.75rem;">${dia.horario}</td>
+            <td style="padding:.55rem .5rem;font-size:.75rem;">${dia.horasOrdinarias}h / ${dia.horasExtras}h / ${dia.horasNocturnas}h noc</td>
+            <td style="padding:.55rem .5rem;font-weight:700;color:var(--accent);">${fmt.format(dia.ingresoNeto)}</td>
+            <td style="padding:.55rem .5rem;color:var(--muted);">${fmt.format(man.ingresoNeto || 0)}</td>
+          </tr>
+        `;
+      }).join('');
+    }
   </script>
 
   <!-- ── Service Worker para PWA ── -->

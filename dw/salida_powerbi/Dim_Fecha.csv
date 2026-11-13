@@ -1,0 +1,6 @@
+﻿"idFecha","fecha","dia","semanaAnio","quincenaMes","mes","nombreMes","anio","diaSemana","esDomingo","esFestivo"
+"20261101","2026-11-01","1","44","Q1 (1-15)","11","noviembre","2026","domingo","True","False"
+"20261102","2026-11-02","2","45","Q1 (1-15)","11","noviembre","2026","lunes","False","True"
+"20261103","2026-11-03","3","45","Q1 (1-15)","11","noviembre","2026","martes","False","False"
+"20261104","2026-11-04","4","45","Q1 (1-15)","11","noviembre","2026","miÃ©rcoles","False","False"
+"20261105","2026-11-05","5","45","Q1 (1-15)","11","noviembre","2026","jueves","False","False"

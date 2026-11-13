@@ -1,5 +1,6 @@
 target/
 data/
+docs/
 *.iml
 .idea/
 .vscode/

@@ -1,0 +1,6 @@
+﻿"idHecho","idFecha","idUsuarioDw","idTipoDia","idQuincena","idTipoHoraPredominante","horasOrdinariasDiurnas","horasOrdinariasNocturnas","horasExtrasDiurnas","horasExtrasNocturnas","horasDominicalesDiurnas","horasDominicalesNocturnas","horasExtrasDomDiurnas","horasExtrasDomNocturnas","horasTotales","pagoSalarialBruto","auxilioTransporte","deduccionesSaludPension","pagoNetoTurno"
+"HT-1","20261101","USR-FB17952F","1","Q-ABIERTA","5","0,0","0,0","0,0","0,0","8,0","0,0","0,0","0,0","8,0","126722,4","8303,17","10137,79","124887,77"
+"HT-2","20261102","USR-FB17952F","1","Q-ABIERTA","5","0,0","0,0","0,0","0,0","4,5","3,5","0,0","0,0","8,0","136935,22","8303,17","10954,82","134283,57"
+"HT-3","20261103","USR-FB17952F","1","Q-ABIERTA","1","8,0","0,0","0,0","0,0","0,0","0,0","0,0","0,0","8,0","66696,0","8303,17","5335,68","69663,49"
+"HT-4","20261104","USR-FB17952F","1","Q-ABIERTA","2","0,5","7,5","0,0","0,0","0,0","0,0","0,0","0,0","8,0","88580,63","8303,17","7086,45","89797,34"
+"HT-5","20261105","USR-FB17952F","1","Q-ABIERTA","1","10,0","0,0","0,0","0,0","0,0","0,0","0,0","0,0","10,0","83370,0","8303,17","6669,6","85003,57"

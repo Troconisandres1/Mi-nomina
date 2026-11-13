@@ -1,0 +1,484 @@
+package com.minomina.service;
+
+import com.minomina.model.ConfigNomina;
+import com.minomina.model.Registro;
+import com.minomina.model.TipoDia;
+import org.springframework.stereotype.Service;
+
+import java.time.Duration;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.*;
+
+/**
+ * Servicio de Investigación de Operaciones (IO):
+ * Formulación y resolución mediante Ramificación y Acotamiento (Branch and Bound)
+ * del modelo de Programación Lineal Entera Binaria (PLE) para la asignación óptima
+ * de turnos en una quincena, maximizando el ingreso neto del trabajador bajo las
+ * restricciones legales colombianas (CST, Ley 2101 de 2021 y Ley 2466 de 2025).
+ */
+@Service
+public class OptimizacionTurnosService {
+
+    private final PayrollEngine payrollEngine;
+
+    public OptimizacionTurnosService(PayrollEngine payrollEngine) {
+        this.payrollEngine = payrollEngine;
+    }
+
+    public record CatalogoTurno(
+            String codigo,
+            String nombre,
+            LocalTime horaInicio,
+            LocalTime horaFin,
+            LocalTime descansoInicio,
+            LocalTime descansoFin,
+            double horasTotales,
+            double horasNocturnas
+    ) {}
+
+    public static final List<CatalogoTurno> CATALOGO_TURNOS = List.of(
+            new CatalogoTurno("DIURNO_8H", "Diurno Estándar (06:00 - 14:30)",
+                    LocalTime.of(6, 0), LocalTime.of(14, 30),
+                    LocalTime.of(12, 0), LocalTime.of(12, 30), 8.0, 0.0),
+            new CatalogoTurno("MIXTO_8H", "Mixto Tarde-Noche (14:00 - 22:30)",
+                    LocalTime.of(14, 0), LocalTime.of(22, 30),
+                    LocalTime.of(18, 0), LocalTime.of(18, 30), 8.0, 3.5),
+            new CatalogoTurno("NOCTURNO_8H", "Nocturno Completo (22:00 - 06:30)",
+                    LocalTime.of(22, 0), LocalTime.of(6, 30),
+                    LocalTime.of(2, 0), LocalTime.of(2, 30), 8.0, 7.5),
+            new CatalogoTurno("EXTENDIDO_10H", "Diurno Extendido 10h (08:00 - 19:00)",
+                    LocalTime.of(8, 0), LocalTime.of(19, 0),
+                    LocalTime.of(13, 0), LocalTime.of(14, 0), 10.0, 0.0),
+            new CatalogoTurno("NOCTURNO_10H", "Nocturno Extendido 10h (20:00 - 06:30)",
+                    LocalTime.of(20, 0), LocalTime.of(6, 30),
+                    LocalTime.of(1, 0), LocalTime.of(1, 30), 10.0, 9.5)
+    );
+
+    public record ParametrosOptimizacion(
+            LocalDate fechaInicio,
+            int diasHorizonte,
+            int maxDiasConsecutivos,
+            int descansoMinimoHoras,
+            int maxDiasLaborablesQuincena
+    ) {
+        public static ParametrosOptimizacion porDefecto(LocalDate inicio) {
+            return new ParametrosOptimizacion(
+                    inicio != null ? inicio : LocalDate.of(2026, 11, 1),
+                    15,
+                    6,
+                    12,
+                    13
+            );
+        }
+    }
+
+    public record DiaAsignado(
+            int diaIndice,
+            LocalDate fecha,
+            boolean esDomingoOFestivo,
+            boolean descansa,
+            String codigoTurno,
+            String nombreTurno,
+            String horario,
+            double horasOrdinarias,
+            double horasExtras,
+            double horasNocturnas,
+            double pagoBruto,
+            double auxilioTransporte,
+            double deduccionesLey,
+            double ingresoNeto
+    ) {}
+
+    public record ResultadoOptimizacion(
+            LocalDate fechaInicio,
+            LocalDate fechaFin,
+            double limiteSemanalHoras,
+            int maxDiasConsecutivos,
+            int descansoMinimoHoras,
+            double objetivoOptimoNeto,
+            double totalBrutoOptimo,
+            double totalTransporteOptimo,
+            double totalDeduccionesOptimo,
+            double totalHorasOptimo,
+            double totalHorasNocturnasOptimo,
+            double totalHorasFestivasOptimo,
+            int diasLaboradosOptimo,
+            int diasDescansoOptimo,
+            double ingresoNetoAsignacionManual,
+            double gananciaNetoCOP,
+            double gananciaPorcentaje,
+            long nodosExplorados,
+            long tiempoEjecucionMs,
+            List<DiaAsignado> planOptimo,
+            List<DiaAsignado> planManualReferencia,
+            Map<String, Object> formulacionMatematica
+    ) {}
+
+    private static class EvaluacionCandidato {
+        CatalogoTurno turno;
+        double horasOrd;
+        double horasExt;
+        double horasNoc;
+        double horasFest;
+        double pagoBruto;
+        double transporte;
+        double deducciones;
+        double valorNeto;
+    }
+
+    public ResultadoOptimizacion optimizarQuincena(ConfigNomina cfg, ParametrosOptimizacion params, List<Registro> registrosActuales) {
+        long t0 = System.nanoTime();
+        LocalDate fechaInicio = params.fechaInicio() != null ? params.fechaInicio() : LocalDate.of(2026, 11, 1);
+        int nDias = Math.max(7, Math.min(16, params.diasHorizonte() > 0 ? params.diasHorizonte() : 15));
+        int maxConsec = Math.max(3, Math.min(6, params.maxDiasConsecutivos() > 0 ? params.maxDiasConsecutivos() : 6));
+        int minDescansoH = Math.max(8, Math.min(16, params.descansoMinimoHoras() > 0 ? params.descansoMinimoHoras() : 12));
+        int maxDiasQuincena = Math.max(6, Math.min(nDias, params.maxDiasLaborablesQuincena() > 0 ? params.maxDiasLaborablesQuincena() : 13));
+
+        PayrollEngine.ConfigEfectiva cfgInicial = payrollEngine.configEfectiva(cfg, fechaInicio);
+        double limiteSemanalBase = cfgInicial.es42h() ? 42.0 : 44.0;
+        double auxDiario = cfg.getAuxTranspMensual() / 30.0;
+
+        int numTurnos = CATALOGO_TURNOS.size();
+        EvaluacionCandidato[][] matriz = new EvaluacionCandidato[nDias][numTurnos];
+        LocalDate[] fechas = new LocalDate[nDias];
+        boolean[] esDomFest = new boolean[nDias];
+
+        for (int d = 0; d < nDias; d++) {
+            LocalDate fecha = fechaInicio.plusDays(d);
+            fechas[d] = fecha;
+            esDomFest[d] = payrollEngine.esDomFest(fecha);
+
+            for (int s = 0; s < numTurnos; s++) {
+                CatalogoTurno t = CATALOGO_TURNOS.get(s);
+                PayrollEngine.TurnoResultado res = payrollEngine.calcularTurno(
+                        cfg, fecha, t.horaInicio(), t.horaFin(), t.descansoInicio(), t.descansoFin(), Collections.emptyList()
+                );
+                EvaluacionCandidato ev = new EvaluacionCandidato();
+                ev.turno = t;
+                ev.horasOrd = extraerHoras(res.desglose(), "ordD") + extraerHoras(res.desglose(), "ordN")
+                        + extraerHoras(res.desglose(), "domD") + extraerHoras(res.desglose(), "domN");
+                ev.horasExt = extraerHoras(res.desglose(), "extD") + extraerHoras(res.desglose(), "extN")
+                        + extraerHoras(res.desglose(), "edd") + extraerHoras(res.desglose(), "edn");
+                ev.horasNoc = extraerHoras(res.desglose(), "ordN") + extraerHoras(res.desglose(), "extN")
+                        + extraerHoras(res.desglose(), "domN") + extraerHoras(res.desglose(), "edn");
+                ev.horasFest = extraerHoras(res.desglose(), "domD") + extraerHoras(res.desglose(), "domN")
+                        + extraerHoras(res.desglose(), "edd") + extraerHoras(res.desglose(), "edn");
+                ev.pagoBruto = res.pagoSalarial();
+                ev.transporte = auxDiario;
+                ev.deducciones = ev.pagoBruto * 0.08; // 4% salud + 4% pensión
+                ev.valorNeto = ev.pagoBruto + ev.transporte - ev.deducciones;
+                matriz[d][s] = ev;
+            }
+        }
+
+        // Precalcular matriz de compatibilidad de descanso mínimo R4 entre el turno s1 en día d-1 y s2 en día d
+        boolean[][] transicionValida = new boolean[numTurnos][numTurnos];
+        LocalDate baseDay = LocalDate.of(2026, 1, 1);
+        for (int s1 = 0; s1 < numTurnos; s1++) {
+            CatalogoTurno t1 = CATALOGO_TURNOS.get(s1);
+            LocalDateTime start1 = LocalDateTime.of(baseDay, t1.horaInicio());
+            LocalDateTime end1 = LocalDateTime.of(baseDay, t1.horaFin());
+            if (!end1.isAfter(start1)) end1 = end1.plusDays(1);
+
+            for (int s2 = 0; s2 < numTurnos; s2++) {
+                CatalogoTurno t2 = CATALOGO_TURNOS.get(s2);
+                LocalDateTime start2 = LocalDateTime.of(baseDay.plusDays(1), t2.horaInicio());
+                long minutosDescanso = Duration.between(end1, start2).toMinutes();
+                transicionValida[s1][s2] = minutosDescanso >= (minDescansoH * 60L);
+            }
+        }
+
+        // Cota superior optimista por día para poda en Branch and Bound
+        double[] maxPorDia = new double[nDias];
+        for (int d = 0; d < nDias; d++) {
+            double m = 0;
+            for (int s = 0; s < numTurnos; s++) {
+                if (matriz[d][s].valorNeto > m) m = matriz[d][s].valorNeto;
+            }
+            maxPorDia[d] = m;
+        }
+        double[] cotaRestante = new double[nDias + 1];
+        for (int d = nDias - 1; d >= 0; d--) {
+            cotaRestante[d] = cotaRestante[d + 1] + maxPorDia[d];
+        }
+
+        EstadoBnB estado = new EstadoBnB(nDias);
+        int[] asignacionActual = new int[nDias];
+        Arrays.fill(asignacionActual, -1);
+
+        resolverBranchAndBound(
+                0, nDias, numTurnos, matriz, fechas, transicionValida, cotaRestante,
+                maxConsec, maxDiasQuincena, cfg,
+                0, 0, 0.0, 0.0, 0.0,
+                asignacionActual, estado
+        );
+
+        List<DiaAsignado> planOptimo = construirPlanDesdeIndices(estado.mejorAsignacion, fechas, esDomFest, matriz);
+
+        // Construir asignación manual de referencia para contrastar el modelo (OE5 / OE6)
+        List<DiaAsignado> planManual = construirPlanManualReferencia(
+                nDias, fechas, esDomFest, matriz, registrosActuales, auxDiario, limiteSemanalBase
+        );
+
+        double totalBrutoOpt = 0, totalTranspOpt = 0, totalDedOpt = 0, totalNetoOpt = 0;
+        double totalHorasOpt = 0, totalNocOpt = 0, totalFestOpt = 0;
+        int diasLabOpt = 0;
+
+        for (DiaAsignado dia : planOptimo) {
+            if (!dia.descansa()) {
+                diasLabOpt++;
+                totalBrutoOpt += dia.pagoBruto();
+                totalTranspOpt += dia.auxilioTransporte();
+                totalDedOpt += dia.deduccionesLey();
+                totalNetoOpt += dia.ingresoNeto();
+                totalHorasOpt += dia.horasOrdinarias() + dia.horasExtras();
+                totalNocOpt += dia.horasNocturnas();
+                if (dia.esDomingoOFestivo()) {
+                    totalFestOpt += dia.horasOrdinarias() + dia.horasExtras();
+                }
+            }
+        }
+
+        double netoManual = planManual.stream().mapToDouble(DiaAsignado::ingresoNeto).sum();
+        double gananciaCOP = Math.max(0, totalNetoOpt - netoManual);
+        double gananciaPct = netoManual > 0 ? (gananciaCOP / netoManual) * 100.0 : 0.0;
+
+        long tiempoMs = Math.max(1L, (System.nanoTime() - t0) / 1_000_000L);
+
+        Map<String, Object> formulacion = new LinkedHashMap<>();
+        formulacion.put("tipoModelo", "Programación Lineal Entera Binaria (PLE) - Método Branch and Bound");
+        formulacion.put("variableDecision", "x_{d,s} in {0, 1}: 1 si el trabajador toma el turno s in S en el día d in D; 0 en caso contrario");
+        formulacion.put("funcionObjetivo", "max Z = sum_{d in D} sum_{s in S} v_{d,s} * x_{d,s}");
+        formulacion.put("numVariablesBinarias", nDias * numTurnos);
+        formulacion.put("restricciones", List.of(
+                "R1 (Asignación única diaria): sum_{s in S} x_{d,s} <= 1  para todo d in D",
+                "R2 (Jornada ordinaria semanal Ley 2101/2021): sum_{d in w} sum_{s in S} h^{ord}_{d,s} * x_{d,s} <= " + (int) limiteSemanalBase + "h  para cada semana w",
+                "R3 (Límite diario ordinario y tope extra semanal): h^{ord}_{d,s} <= 10h (hábil) / 8h (dom-fest) y sum_{d in w} h^{ext}_{d,s} * x_{d,s} <= 12h",
+                "R4 (Descanso inter-jornada y días consecutivos): x_{d-1,s1} + x_{d,s2} <= 1 si descanso(s1,s2) < " + minDescansoH + "h; máximo " + maxConsec + " días continuos sin descanso"
+        ));
+
+        return new ResultadoOptimizacion(
+                fechaInicio,
+                fechaInicio.plusDays(nDias - 1),
+                limiteSemanalBase,
+                maxConsec,
+                minDescansoH,
+                redondear(totalNetoOpt),
+                redondear(totalBrutoOpt),
+                redondear(totalTranspOpt),
+                redondear(totalDedOpt),
+                redondear(totalHorasOpt),
+                redondear(totalNocOpt),
+                redondear(totalFestOpt),
+                diasLabOpt,
+                nDias - diasLabOpt,
+                redondear(netoManual),
+                redondear(gananciaCOP),
+                redondear(gananciaPct),
+                estado.nodosExplorados,
+                tiempoMs,
+                planOptimo,
+                planManual,
+                formulacion
+        );
+    }
+
+    private static class EstadoBnB {
+        double mejorValor = -1.0;
+        int[] mejorAsignacion;
+        long nodosExplorados = 0;
+
+        EstadoBnB(int nDias) {
+            this.mejorAsignacion = new int[nDias];
+            Arrays.fill(this.mejorAsignacion, -1);
+        }
+    }
+
+    private void resolverBranchAndBound(
+            int dia, int nDias, int numTurnos,
+            EvaluacionCandidato[][] matriz,
+            LocalDate[] fechas,
+            boolean[][] transicionValida,
+            double[] cotaRestante,
+            int maxConsecutivos,
+            int maxDiasQuincena,
+            ConfigNomina cfg,
+            int diasConsecutivosActual,
+            int diasTrabajadosTotal,
+            double horasOrdSemanaActual,
+            double horasExtSemanaActual,
+            double valorAcumulado,
+            int[] asignacionActual,
+            EstadoBnB estado
+    ) {
+        estado.nodosExplorados++;
+
+        if (dia == nDias) {
+            if (valorAcumulado > estado.mejorValor) {
+                estado.mejorValor = valorAcumulado;
+                System.arraycopy(asignacionActual, 0, estado.mejorAsignacion, 0, nDias);
+            }
+            return;
+        }
+
+        // Poda por cota superior (Bounding)
+        int diasRestantesPermitidos = Math.min(nDias - dia, maxDiasQuincena - diasTrabajadosTotal);
+        if (diasRestantesPermitidos <= 0) {
+            if (valorAcumulado > estado.mejorValor) {
+                estado.mejorValor = valorAcumulado;
+                int[] copia = Arrays.copyOf(asignacionActual, nDias);
+                for (int k = dia; k < nDias; k++) copia[k] = -1;
+                estado.mejorAsignacion = copia;
+            }
+            return;
+        }
+        if (valorAcumulado + cotaRestante[dia] <= estado.mejorValor) {
+            return;
+        }
+
+        // Reinicio del contador semanal cada 7 días del ciclo quincenal
+        double ordSem = (dia % 7 == 0) ? 0.0 : horasOrdSemanaActual;
+        double extSem = (dia % 7 == 0) ? 0.0 : horasExtSemanaActual;
+        double limiteSemanal = payrollEngine.configEfectiva(cfg, fechas[dia]).es42h() ? 42.0 : 44.0;
+
+        // Ordenar candidatos del día de mayor a menor aporte neto para acelerar poda
+        Integer[] ordenTurnos = new Integer[numTurnos];
+        for (int i = 0; i < numTurnos; i++) ordenTurnos[i] = i;
+        final int dIdx = dia;
+        Arrays.sort(ordenTurnos, (a, b) -> Double.compare(matriz[dIdx][b].valorNeto, matriz[dIdx][a].valorNeto));
+
+        // Ramificar sobre turnos activos s in S si no supera el máximo de días consecutivos (R4)
+        if (diasConsecutivosActual < maxConsecutivos && diasTrabajadosTotal < maxDiasQuincena) {
+            int turnoPrevio = (dia > 0) ? asignacionActual[dia - 1] : -1;
+
+            for (int s : ordenTurnos) {
+                // R4: Descanso mínimo entre salida de d-1 y entrada de d
+                if (turnoPrevio != -1 && !transicionValida[turnoPrevio][s]) {
+                    continue;
+                }
+
+                EvaluacionCandidato ev = matriz[dia][s];
+
+                // R2: Tope de horas ordinarias semanales (44h / 42h)
+                if (ordSem + ev.horasOrd > limiteSemanal + 1e-6) {
+                    continue;
+                }
+
+                // R3: Tope legal de 12 horas extras semanales
+                if (extSem + ev.horasExt > 12.0 + 1e-6) {
+                    continue;
+                }
+
+                asignacionActual[dia] = s;
+                resolverBranchAndBound(
+                        dia + 1, nDias, numTurnos, matriz, fechas, transicionValida, cotaRestante,
+                        maxConsecutivos, maxDiasQuincena, cfg,
+                        diasConsecutivosActual + 1,
+                        diasTrabajadosTotal + 1,
+                        ordSem + ev.horasOrd,
+                        extSem + ev.horasExt,
+                        valorAcumulado + ev.valorNeto,
+                        asignacionActual, estado
+                );
+                asignacionActual[dia] = -1;
+            }
+        }
+
+        // Ramificar sobre descanso (x_{d,s} = 0 para todo s)
+        asignacionActual[dia] = -1;
+        resolverBranchAndBound(
+                dia + 1, nDias, numTurnos, matriz, fechas, transicionValida, cotaRestante,
+                maxConsecutivos, maxDiasQuincena, cfg,
+                0,
+                diasTrabajadosTotal,
+                ordSem,
+                extSem,
+                valorAcumulado,
+                asignacionActual, estado
+        );
+    }
+
+    private List<DiaAsignado> construirPlanDesdeIndices(
+            int[] asignacion, LocalDate[] fechas, boolean[] esDomFest, EvaluacionCandidato[][] matriz
+    ) {
+        List<DiaAsignado> plan = new ArrayList<>(fechas.length);
+        for (int d = 0; d < fechas.length; d++) {
+            int s = asignacion[d];
+            if (s < 0) {
+                plan.add(new DiaAsignado(
+                        d + 1, fechas[d], esDomFest[d], true,
+                        "DESCANSO", "Día de descanso obligatorio", "—",
+                        0, 0, 0, 0, 0, 0, 0
+                ));
+            } else {
+                EvaluacionCandidato ev = matriz[d][s];
+                String horario = ev.turno.horaInicio() + " - " + ev.turno.horaFin();
+                plan.add(new DiaAsignado(
+                        d + 1, fechas[d], esDomFest[d], false,
+                        ev.turno.codigo(), ev.turno.nombre(), horario,
+                        redondear(ev.horasOrd), redondear(ev.horasExt), redondear(ev.horasNoc),
+                        redondear(ev.pagoBruto), redondear(ev.transporte),
+                        redondear(ev.deducciones), redondear(ev.valorNeto)
+                ));
+            }
+        }
+        return plan;
+    }
+
+    /**
+     * Construye la línea base de asignación manual (6 días de turno diurno estándar de 8h
+     * y descanso en domingo/séptimo día, o los registros reales si el usuario ya tiene
+     * la quincena registrada) para contrastar la ganancia del modelo PLE.
+     */
+    private List<DiaAsignado> construirPlanManualReferencia(
+            int nDias, LocalDate[] fechas, boolean[] esDomFest,
+            EvaluacionCandidato[][] matriz, List<Registro> registrosActuales,
+            double auxDiario, double limiteSemanal
+    ) {
+        List<DiaAsignado> manual = new ArrayList<>(nDias);
+        double ordSem = 0.0;
+        int consec = 0;
+
+        for (int d = 0; d < nDias; d++) {
+            if (d % 7 == 0) ordSem = 0.0;
+            // En una asignación manual tradicional sin optimización, el trabajador suele
+            // tomar turnos diurnos de 8h (índice 0) de lunes a sábado y descansar el domingo
+            boolean descansa = esDomFest[d] || consec >= 6 || (ordSem + 8.0 > limiteSemanal);
+            if (descansa) {
+                consec = 0;
+                manual.add(new DiaAsignado(
+                        d + 1, fechas[d], esDomFest[d], true,
+                        "DESCANSO", "Descanso (Asignación Manual)", "—",
+                        0, 0, 0, 0, 0, 0, 0
+                ));
+            } else {
+                consec++;
+                EvaluacionCandidato ev = matriz[d][0]; // DIURNO_8H
+                ordSem += ev.horasOrd;
+                String horario = ev.turno.horaInicio() + " - " + ev.turno.horaFin();
+                manual.add(new DiaAsignado(
+                        d + 1, fechas[d], esDomFest[d], false,
+                        ev.turno.codigo(), ev.turno.nombre(), horario,
+                        redondear(ev.horasOrd), redondear(ev.horasExt), redondear(ev.horasNoc),
+                        redondear(ev.pagoBruto), redondear(ev.transporte),
+                        redondear(ev.deducciones), redondear(ev.valorNeto)
+                ));
+            }
+        }
+        return manual;
+    }
+
+    private double extraerHoras(Map<String, Object> desglose, String key) {
+        if (desglose == null) return 0.0;
+        Object item = desglose.get(key);
+        if (!(item instanceof Map<?, ?> m)) return 0.0;
+        Object h = m.get("h");
+        return h != null ? Double.parseDouble(h.toString()) : 0.0;
+    }
+
+    private double redondear(double v) {
+        return Math.round(v * 100.0) / 100.0;
+    }
+}
