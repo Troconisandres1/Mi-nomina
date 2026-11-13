@@ -12,8 +12,8 @@ Permite a los trabajadores por turnos registrar sus jornadas diarias, verificar 
 - **Programa:** Ingeniería de Sistemas — VII Semestre (Cartagena de Indias, Colombia)
 - **Asignaturas Integradas:**
   - **Desarrollo de Aplicaciones Web (DWA):** Doc. Fabio García
-  - **Visualización de Datos II (VD II):** Doc. Lucía Mestre
-  - **Investigación de Operaciones (IO):** Doc. Walter Espriella
+  - **Visualización de Datos II (VD II):** Doc. Walter Espriella
+  - **Investigación de Operaciones (IO):** Doc. Lucía Mestre
 
 ---
 
