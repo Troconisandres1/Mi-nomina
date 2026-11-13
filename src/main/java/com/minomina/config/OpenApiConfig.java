@@ -21,7 +21,7 @@ public class OpenApiConfig {
                         .version("1.0.0")
                         .description("API RESTful para liquidación de nómina quincenal por turnos en Colombia (Ley 2101 de 2021 y Ley 2466 de 2025), asistente inteligente con Google Gemini, Data Warehouse en Esquema Estrella para Power BI y optimización matemática de turnos (PLE — Branch & Bound).")
                         .contact(new Contact()
-                                .name("Andrés Camilo Troconis, Luis Castillo, Alan Cassiani")
+                                .name("Andrés Camilo Troconis, Luis Castillo, Alan Cassiani y Marchena Urbina")
                                 .url("https://github.com/Troconisandres1/Mi-nomina")))
                 .addSecurityItem(new SecurityRequirement().addList(schemeName))
                 .components(new Components()

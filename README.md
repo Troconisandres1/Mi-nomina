@@ -8,7 +8,7 @@ Permite a los trabajadores por turnos registrar sus jornadas diarias, verificar 
 
 ## Integrantes y Contexto Académico
 
-- **Autores:** Andrés Camilo Troconis, Luis Castillo, Alan Cassiani
+- **Autores:** Andrés Camilo Troconis, Luis Castillo, Alan Cassiani y Marchena Urbina
 - **Programa:** Ingeniería de Sistemas — VII Semestre (Cartagena de Indias, Colombia)
 - **Asignaturas Integradas:**
   - **Desarrollo de Aplicaciones Web (DWA):** Doc. Fabio García
