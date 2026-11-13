@@ -3,6 +3,13 @@ spring:
     name: mi-nomina-backend
   profiles:
     active: dev
+  ai:
+    openai:
+      api-key: ${GROQ_API_KEY:}
+      base-url: https://api.groq.com/openai
+      chat:
+        options:
+          model: ${GROQ_MODEL:llama-3.3-70b-versatile}
 
 app:
   jwt:

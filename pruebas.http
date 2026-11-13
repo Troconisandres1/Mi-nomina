@@ -1,0 +1,79 @@
+### ============================================================================
+### TALLER PRÁCTICO: Implementación básica de Tool Calling con Spring AI
+### Asignatura: Desarrollo Web Avanzado (Ing. Fabio García)
+### Proyecto: Mi Nómina + Herramientas Académicas (@Tool)
+### ============================================================================
+
+### Prueba 1 - Calcular promedio (Herramienta: calcularPromedio)
+POST http://localhost:8080/api/chat
+Content-Type: text/plain
+
+Calcula el promedio de las notas 4.0, 3.5 y 4.5
+
+### Prueba 2 - Otro promedio (Herramienta: calcularPromedio)
+POST http://localhost:8080/api/chat
+Content-Type: text/plain
+
+Tengo las notas 2.5, 2.8 y 3.2. Calcula mi promedio.
+
+### Prueba 3 - Selección de otra herramienta (Herramienta: estadoAcademico)
+POST http://localhost:8080/api/chat
+Content-Type: text/plain
+
+Un estudiante tiene promedio 2.8. ¿Cuál es su estado académico?
+
+### Prueba 4 - Pregunta que no requiere Tool (Sin ejecución de @Tool)
+POST http://localhost:8080/api/chat
+Content-Type: text/plain
+
+Explícame qué significa promedio académico.
+
+### ============================================================================
+### ACTIVIDADES PRÁCTICAS DEL ESTUDIANTE (Sección 15 de la Guía)
+### ============================================================================
+
+### Actividad 1 - Nueva herramienta: calcularNotaFinal (3 notas y 3 porcentajes)
+POST http://localhost:8080/api/chat
+Content-Type: text/plain
+
+Calcula la nota final definitiva ponderada con las notas 4.2 del 30%, 3.8 del 30% y 4.5 del 40%.
+
+### Actividad 2 - Herramienta de asistencia: estadoAsistencia
+POST http://localhost:8080/api/chat
+Content-Type: text/plain
+
+Un estudiante registró un porcentaje de asistencia de 85%. ¿Cuál es su estado de asistencia?
+
+### Actividad 3 - Prueba de selección (Pregunta 5: estadoAsistencia con inasistencia)
+POST http://localhost:8080/api/chat
+Content-Type: text/plain
+
+Un estudiante solo tuvo una asistencia de 72%. Verifica su estado de asistencia.
+
+### Actividad 4 - Pregunta adicional sin Tool #1 (Conceptual sobre Tool Calling)
+POST http://localhost:8080/api/chat
+Content-Type: text/plain
+
+¿Qué es Tool Calling en Spring AI y cuál es la función de @Tool?
+
+### Actividad 4 - Pregunta adicional sin Tool #2 (Conceptual sobre Ley 2101)
+POST http://localhost:8080/api/chat
+Content-Type: text/plain
+
+Explícame qué establece la Ley 2101 de 2021 sobre la jornada laboral en Colombia.
+
+### ============================================================================
+### EXTENSIÓN EN MI NÓMINA: Tool Calling aplicado a Liquidación Laboral (@Tool)
+### ============================================================================
+
+### Prueba Mi Nómina 1 - Liquidación de turno dominical con @Tool calcularLiquidacionTurno
+POST http://localhost:8080/api/chat
+Content-Type: text/plain
+
+Con un salario base de 2000000, calcula el recargo de un turno dominical de 8 horas.
+
+### Prueba Mi Nómina 2 - Verificación de tope semanal con @Tool verificarTopeJornadaSemanal
+POST http://localhost:8080/api/chat
+Content-Type: text/plain
+
+Verifica el tope de la jornada semanal si un trabajador acumuló 46 horas semanales bajo la Ley 2101.
