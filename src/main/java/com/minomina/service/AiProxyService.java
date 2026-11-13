@@ -139,7 +139,7 @@ public class AiProxyService {
                     + "  - **Hora Extra Nocturna (+75 %):** ~$13.928 COP/hora.\n"
                     + "  - **Hora Extra Diurna Dominical/Festiva (+115 %):** ~$17.112 COP/hora.\n"
                     + "  - **Hora Extra Nocturna Dominical/Festiva (+165 %):** ~$21.091 COP/hora.\n\n"
-                    + "💡 **Consejo de optimización:** Si quieres alcanzar el mayor ingreso neto con la menor cantidad de días extra, prioriza las horas extras nocturnas o en domingo/festivo desde la pestaña **Optimizar**.";
+                    + "Consejo de optimización: Si quieres alcanzar el mayor ingreso neto con la menor cantidad de días extra, prioriza las horas extras nocturnas o en domingo/festivo desde la pestaña **Optimizar**.";
         }
 
         if (norm.contains("dominical") || norm.contains("festivo") || norm.contains("domingo")) {
@@ -160,7 +160,7 @@ public class AiProxyService {
         return "**Respuesta del Asistente de Mi Nómina:**\n\n"
                 + "Sobre tu consulta (*\"" + msg + "\"*), ten en cuenta estos datos actuales de tu perfil:\n\n"
                 + contexto
-                + "\n\n💡 *También puedes pedirme que ejecute una herramienta `@Tool` de cálculo escribiendo por ejemplo: \"Calcula el recargo de un turno dominical de 8 horas\" o \"Verifica el tope semanal para 46 horas\".*";
+                + "\n\n*También puedes pedirme que ejecute una herramienta `@Tool` de cálculo escribiendo por ejemplo: \"Calcula el recargo de un turno dominical de 8 horas\" o \"Verifica el tope semanal para 46 horas\".*";
     }
 
     /**
