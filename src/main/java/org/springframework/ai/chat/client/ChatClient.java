@@ -130,46 +130,51 @@ public class ChatClient {
                 }
             }
 
-            // Tool 2: verificarTopeJornadaSemanal (horasSemanales)
+            // Tool 2: verificarTopeJornadaSemanal (horasSemanales / limites de horas extras)
             if (registeredTools.containsKey("verificarTopeJornadaSemanal")
-                    && (norm.contains("tope") || norm.contains("jornada semanal") || norm.contains("horas semanales") || norm.contains("semana"))) {
+                    && (norm.contains("tope") || norm.contains("jornada semanal") || norm.contains("horas semanales")
+                    || norm.contains("cuantos dias") || norm.contains("cuantas horas extra")
+                    || (norm.contains("hora extra") && (norm.contains("debo") || norm.contains("puedo") || norm.contains("maximo") || norm.contains("limite"))))) {
                 List<Double> nums = extractNumbers(cleanMsg);
-                if (!nums.isEmpty()) {
-                    // Elegir el número que representa las horas semanales (no el año 2021)
-                    double horasSem = nums.get(0);
-                    for (double n : nums) {
-                        if (n != 2101 && n != 2021 && n != 2025 && n != 2026) {
-                            horasSem = n;
-                            break;
-                        }
+                double horasSem = 42.0;
+                for (double n : nums) {
+                    if (n != 2101 && n != 2021 && n != 2025 && n != 2026) {
+                        horasSem = n;
+                        break;
                     }
-                    ToolMethodRef ref = registeredTools.get("verificarTopeJornadaSemanal");
-                    Object result = invokeTool(ref, horasSem);
-                    return String.format(Locale.US,
-                            "Para un trabajador con **%.1f horas semanales**, la herramienta `verificarTopeJornadaSemanal` determinó: **%s**.",
-                            horasSem, result);
                 }
+                ToolMethodRef ref = registeredTools.get("verificarTopeJornadaSemanal");
+                Object result = invokeTool(ref, horasSem);
+                if (norm.contains("cuantos dias") || norm.contains("cuantas horas extra") || norm.contains("puedo") || norm.contains("debo")) {
+                    return "Según la legislación laboral colombiana (Art. 22 de la Ley 50 de 1990 y Ley 2101 de 2021), el límite legal de **horas extras** es de:\n\n"
+                            + "• **Máximo 2 horas extras por día** y **máximo 12 horas extras por semana** (es decir, hasta **6 días a la semana** haciendo 2 horas extras diarias, o **24 horas extras en la quincena**).\n"
+                            + "• Validación de la herramienta `@Tool verificarTopeJornadaSemanal` para tu jornada base (" + String.format(Locale.US, "%.1f", horasSem) + " h/sem): **" + result + "**.\n"
+                            + "• Si buscas maximizar tu pago quincenal dentro de ese tope de 24 h extras quincenales, te conviene priorizar las **Horas Extras Nocturnas (+75 %)** o **Dominicales/Festivas (+115 % diurna / +165 % nocturna)**.";
+                }
+                return String.format(Locale.US,
+                        "Para un trabajador con **%.1f horas semanales**, la herramienta `verificarTopeJornadaSemanal` determinó: **%s**.",
+                        horasSem, result);
             }
 
             // Tool 1: calcularLiquidacionTurno (salarioBase, horas, tipoTurno)
             if (registeredTools.containsKey("calcularLiquidacionTurno")
-                    && (norm.contains("calcula") || norm.contains("recargo") || norm.contains("liquidar") || norm.contains("liquidacion") || norm.contains("turno") || norm.contains("hora extra") || norm.contains("dominical") || norm.contains("nocturn"))) {
+                    && (norm.contains("calcula") || norm.contains("cuanto vale") || norm.contains("cuanto me pagan")
+                    || norm.contains("recargo") || norm.contains("liquidar") || norm.contains("liquidacion")
+                    || norm.contains("turno") || norm.contains("hora extra") || norm.contains("dominical") || norm.contains("nocturn"))) {
                 List<Double> nums = extractNumbers(cleanMsg);
-                if (!nums.isEmpty()) {
-                    double salarioBase = 2000000.0;
-                    double horas = 8.0;
-                    if (nums.size() >= 2) {
-                        salarioBase = nums.get(0) > 500 ? nums.get(0) : nums.get(1);
-                        horas = nums.get(0) <= 500 ? nums.get(0) : nums.get(1);
-                    } else {
-                        if (nums.get(0) > 500) salarioBase = nums.get(0);
-                        else horas = nums.get(0);
-                    }
-                    String tipo = detectarTipoTurno(norm);
-                    ToolMethodRef ref = registeredTools.get("calcularLiquidacionTurno");
-                    Object result = invokeTool(ref, salarioBase, horas, tipo);
-                    return "Resultado de la herramienta `@Tool calcularLiquidacionTurno` ejecutada en Mi Nómina:\n" + result;
+                double salarioBase = 1671390.0; // Salario base por defecto (~$7,959/h * 210h) si no indica otro
+                double horas = 8.0;
+                if (nums.size() >= 2) {
+                    salarioBase = nums.get(0) > 500 ? nums.get(0) : nums.get(1);
+                    horas = nums.get(0) <= 500 ? nums.get(0) : nums.get(1);
+                } else if (nums.size() == 1) {
+                    if (nums.get(0) > 500) salarioBase = nums.get(0);
+                    else horas = nums.get(0);
                 }
+                String tipo = detectarTipoTurno(norm);
+                ToolMethodRef ref = registeredTools.get("calcularLiquidacionTurno");
+                Object result = invokeTool(ref, salarioBase, horas, tipo);
+                return "Resultado de la herramienta `@Tool calcularLiquidacionTurno` ejecutada en Mi Nómina:\n" + result;
             }
         }
 
@@ -177,19 +182,12 @@ public class ChatClient {
     }
 
     private boolean esPreguntaConceptualSinTool(String norm) {
-        List<Double> nums = extractNumbers(norm);
-        List<Double> realNums = new ArrayList<>();
-        for (double n : nums) {
-            if (n != 2101 && n != 2021 && n != 2466 && n != 2025 && n != 2026) {
-                realNums.add(n);
-            }
-        }
-        if (realNums.isEmpty()) {
+        if ((norm.startsWith("explicame") || norm.startsWith("que significa") || norm.startsWith("que es ")
+                || norm.startsWith("cual es la diferencia"))
+                && !norm.contains("calcula") && !norm.contains("verifica")) {
             return true;
         }
-        return (norm.startsWith("explicame") || norm.startsWith("que significa") || norm.startsWith("que es ")
-                || norm.startsWith("cual es la diferencia"))
-                && !norm.contains("calcula") && !norm.contains("verifica");
+        return false;
     }
 
     private String generarRespuestaDirectaSinTool(String originalMsg, String norm) {

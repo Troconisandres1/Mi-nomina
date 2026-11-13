@@ -120,10 +120,47 @@ public class AiProxyService {
 
     private String generarRespuestaContextualLocal(String contexto, String mensajeUsuario) {
         String msg = mensajeUsuario == null ? "" : mensajeUsuario.trim();
-        return "**Análisis de tu Nómina Quincenal (Contexto Verificado):**\n\n"
-                + "Respecto a tu consulta (*\"" + msg + "\"*), aquí tienes el estado consolidado calculado con tus registros actuales bajo la normativa laboral colombiana 2026 (Ley 2101 de 2021 — jornada de 42 h/semana y Ley 2466 de 2025 — recargo dominical/festivo del 90 %):\n\n"
+        String norm = msg.toLowerCase();
+
+        if (norm.contains("hola") || norm.contains("buenos dias") || norm.contains("buenas")) {
+            return "¡Hola! Soy tu asistente inteligente de **Mi Nómina** (con **Spring AI Tool Calling `@Tool`** activo).\n\n"
+                    + "Puedes pedirme en lenguaje natural cálculos y verificaciones directas como:\n"
+                    + "• *\"Calcula el recargo de un turno dominical de 8 horas con salario de 2000000\"*\n"
+                    + "• *\"¿Cuántos días u horas extras puedo hacer en la semana?\"*\n"
+                    + "• *\"Verifica el tope semanal si trabajé 46 horas\"*\n"
+                    + "• *\"Calcula mi pago neto quincenal ponderado para 60 horas ordinarias, 20 nocturnas y 16 dominicales\"*";
+        }
+
+        if (norm.contains("extra") || norm.contains("cuantos dias") || norm.contains("cuantas horas")) {
+            return "**Guía de Horas Extras para tu Nómina (Ley 2101 de 2021 y Art. 22 Ley 50 de 1990):**\n\n"
+                    + "• **Tope diario y semanal:** Legalmente puedes realizar hasta **2 horas extras por día** y un máximo de **12 horas extras por semana** (equivalente a **6 días a la semana** haciendo 2 horas extras diarias, o **24 horas extras en la quincena**).\n"
+                    + "• **Recargos sobre tu hora ordinaria ($7.959 COP):**\n"
+                    + "  - **Hora Extra Diurna (+25 %):** ~$9.949 COP/hora.\n"
+                    + "  - **Hora Extra Nocturna (+75 %):** ~$13.928 COP/hora.\n"
+                    + "  - **Hora Extra Diurna Dominical/Festiva (+115 %):** ~$17.112 COP/hora.\n"
+                    + "  - **Hora Extra Nocturna Dominical/Festiva (+165 %):** ~$21.091 COP/hora.\n\n"
+                    + "💡 **Consejo de optimización:** Si quieres alcanzar el mayor ingreso neto con la menor cantidad de días extra, prioriza las horas extras nocturnas o en domingo/festivo desde la pestaña **Optimizar**.";
+        }
+
+        if (norm.contains("dominical") || norm.contains("festivo") || norm.contains("domingo")) {
+            return "**Liquidación de Turnos Dominicales y Festivos (Ley 2466 de 2025):**\n\n"
+                    + "• Con la reforma laboral vigente, el recargo dominical y festivo ordinario sube al **90 %** (factor `1.90`, o `1.80` según el tramo de transición configurado en tu perfil).\n"
+                    + "• Sobre tu valor de hora ordinaria actual (**$7.959 COP**), un turno dominical ordinario de **8 horas** representa aproximadamente **$114.610 a $120.977 COP brutos** antes de seguridad social (8 %).\n"
+                    + "• Puedes pedirme el cálculo exacto diciendo: *\"Con salario de 2000000 calcula un turno dominical de 8 horas\"*.";
+        }
+
+        if (norm.contains("prima") || norm.contains("cesantias") || norm.contains("vacaciones") || norm.contains("prestaciones")) {
+            return "**Prestaciones Sociales en Colombia sobre tu Nómina:**\n\n"
+                    + "• **Prima de servicios:** 1 mes de salario por año (50 % en junio y 50 % en diciembre), incluyendo el auxilio de transporte y el promedio de recargos/horas extras.\n"
+                    + "• **Cesantías:** 1 mes de salario por cada año trabajado (8,33 % mensual sobre el devengado total + auxilio de transporte).\n"
+                    + "• **Intereses sobre cesantías:** 12 % anual sobre el saldo acumulado de cesantías.\n"
+                    + "• **Vacaciones:** 15 días hábiles remunerados por año (4,17 %, calculados sobre el salario ordinario y recargos sin incluir horas extras ni auxilio de transporte).";
+        }
+
+        return "**Respuesta del Asistente de Mi Nómina:**\n\n"
+                + "Sobre tu consulta (*\"" + msg + "\"*), ten en cuenta estos datos actuales de tu perfil:\n\n"
                 + contexto
-                + "\n\n**Recomendación:** Puedes usar la pestaña **Optimizar** para calcular mediante Programación Lineal Entera (Branch & Bound) la combinación de turnos que maximiza tu ingreso neto quincenal respetando los topes de ley.";
+                + "\n\n💡 *También puedes pedirme que ejecute una herramienta `@Tool` de cálculo escribiendo por ejemplo: \"Calcula el recargo de un turno dominical de 8 horas\" o \"Verifica el tope semanal para 46 horas\".*";
     }
 
     /**
