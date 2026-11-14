@@ -3723,17 +3723,22 @@
             allowfullscreen="true"></iframe>
         </div>
 
-        <!-- Vista interactiva de las 3 páginas del prototipo Power BI -->
+        <!-- Vista interactiva de las 4 páginas del Dashboard Power BI integrado -->
         <div id="powerBiPreviewWrap" style="border:1px solid var(--border);border-radius:var(--radius-sm);padding:1rem;background:var(--surface);">
           <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem;margin-bottom:1rem;border-bottom:1px solid var(--border);padding-bottom:.75rem;">
             <div style="display:flex;gap:.4rem;flex-wrap:wrap;">
               <button class="btn btn-primary" id="pbiPageBtn1" onclick="mostrarPaginaPbi(1)" style="padding:.4rem .85rem;font-size:.72rem;">Pág 1 · Resumen Ejecutivo</button>
               <button class="btn btn-ghost" id="pbiPageBtn2" onclick="mostrarPaginaPbi(2)" style="padding:.4rem .85rem;font-size:.72rem;">Pág 2 · Detalle por Concepto</button>
               <button class="btn btn-ghost" id="pbiPageBtn3" onclick="mostrarPaginaPbi(3)" style="padding:.4rem .85rem;font-size:.72rem;">Pág 3 · Comparación de Quincenas</button>
+              <button class="btn btn-ghost" id="pbiPageBtn4" onclick="mostrarPaginaPbi(4)" style="padding:.4rem .85rem;font-size:.72rem;">Pág 4 · Modelo Estrella y ETL</button>
             </div>
-            <span style="font-size:.7rem;font-family:var(--font-mono);color:var(--muted);">Esquema Estrella · 5 Dimensiones · 1 Hecho</span>
+            <span style="font-size:.7rem;font-family:var(--font-mono);color:var(--muted);">Power BI Embedded · Esquema Estrella (5 Dimensiones · 1 Hecho)</span>
           </div>
           <div id="pbiPageContent" style="font-size:.83rem;color:var(--text);"></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem;margin-top:1rem;padding-top:.65rem;border-top:1px solid var(--border);font-size:.72rem;color:var(--muted);font-family:var(--font-mono);">
+            <span>Microsoft Power BI · Conexión en vivo con Data Warehouse (/api/analytics/dw)</span>
+            <span id="pbiFooterPageIndicator">Página 1 de 4 · Modelo Dimensional Kimball</span>
+          </div>
         </div>
       </div>
     </div>
@@ -6994,35 +6999,35 @@ REGLAS:
 
     function construirDemoDwPayload() {
       const hechosDemo = [
-        { fecha: '2026-11-01', tipoDia: 'DOMINGO_FESTIVO', modalidad: 'DOM', horasTotales: 8, horasNocturnas: 0, horasFestivas: 8, brutoCop: 144762, deduccionCop: 11581, netoCop: 133181 },
-        { fecha: '2026-11-02', tipoDia: 'DIA_HABIL', modalidad: 'ORD + RN', horasTotales: 8, horasNocturnas: 3, horasFestivas: 0, brutoCop: 86190, deduccionCop: 6895, netoCop: 79295 },
-        { fecha: '2026-11-03', tipoDia: 'DIA_HABIL', modalidad: 'ORD + HED', horasTotales: 10, horasNocturnas: 0, horasFestivas: 0, brutoCop: 100000, deduccionCop: 8000, netoCop: 92000 },
-        { fecha: '2026-11-04', tipoDia: 'DIA_HABIL', modalidad: 'RN + HEN', horasTotales: 9, horasNocturnas: 9, horasFestivas: 0, brutoCop: 119524, deduccionCop: 9562, netoCop: 109962 },
-        { fecha: '2026-11-05', tipoDia: 'DIA_HABIL', modalidad: 'ORD', horasTotales: 8, horasNocturnas: 0, horasFestivas: 0, brutoCop: 76190, deduccionCop: 6095, netoCop: 70095 },
-        { fecha: '2026-11-06', tipoDia: 'DIA_HABIL', modalidad: 'ORD + RN', horasTotales: 9, horasNocturnas: 4, horasFestivas: 0, brutoCop: 99048, deduccionCop: 7924, netoCop: 91124 },
-        { fecha: '2026-11-08', tipoDia: 'DOMINGO_FESTIVO', modalidad: 'DOM + HENF', horasTotales: 10, horasNocturnas: 4, horasFestivas: 10, brutoCop: 195238, deduccionCop: 15619, netoCop: 179619 },
-        { fecha: '2026-11-09', tipoDia: 'DIA_HABIL', modalidad: 'ORD + HED', horasTotales: 10, horasNocturnas: 0, horasFestivas: 0, brutoCop: 100000, deduccionCop: 8000, netoCop: 92000 },
-        { fecha: '2026-11-10', tipoDia: 'DIA_HABIL', modalidad: 'RN', horasTotales: 8, horasNocturnas: 8, horasFestivas: 0, brutoCop: 102857, deduccionCop: 8229, netoCop: 94628 },
-        { fecha: '2026-11-11', tipoDia: 'DIA_HABIL', modalidad: 'ORD + HEN', horasTotales: 10, horasNocturnas: 2, horasFestivas: 0, brutoCop: 109524, deduccionCop: 8762, netoCop: 100762 },
-        { fecha: '2026-11-12', tipoDia: 'DIA_HABIL', modalidad: 'ORD', horasTotales: 8, horasNocturnas: 0, horasFestivas: 0, brutoCop: 76190, deduccionCop: 6095, netoCop: 70095 },
-        { fecha: '2026-11-13', tipoDia: 'DIA_HABIL', modalidad: 'RN + HEN', horasTotales: 8, horasNocturnas: 8, horasFestivas: 0, brutoCop: 108571, deduccionCop: 8686, netoCop: 99885 }
+        { idHecho: 'HT-01', idFecha: '2026-11-01', fecha: '2026-11-01', idUsuarioDw: 'USR-8F4A2C91E0', idTipoDia: 'DOMINGO_FESTIVO', tipoDia: 'DOMINGO_FESTIVO', idTipoHora: 'DOM', modalidad: 'DOM', idQuincena: '2026-Q21', horasTotales: 8, horasNocturnas: 0, horasFestivas: 8, brutoCop: 144762, deduccionCop: 11581, netoCop: 133181 },
+        { idHecho: 'HT-02', idFecha: '2026-11-02', fecha: '2026-11-02', idUsuarioDw: 'USR-8F4A2C91E0', idTipoDia: 'DIA_HABIL', tipoDia: 'DIA_HABIL', idTipoHora: 'RNO', modalidad: 'ORD + RN', idQuincena: '2026-Q21', horasTotales: 8, horasNocturnas: 3, horasFestivas: 0, brutoCop: 86190, deduccionCop: 6895, netoCop: 79295 },
+        { idHecho: 'HT-03', idFecha: '2026-11-03', fecha: '2026-11-03', idUsuarioDw: 'USR-8F4A2C91E0', idTipoDia: 'DIA_HABIL', tipoDia: 'DIA_HABIL', idTipoHora: 'HED', modalidad: 'ORD + HED', idQuincena: '2026-Q21', horasTotales: 10, horasNocturnas: 0, horasFestivas: 0, brutoCop: 100000, deduccionCop: 8000, netoCop: 92000 },
+        { idHecho: 'HT-04', idFecha: '2026-11-04', fecha: '2026-11-04', idUsuarioDw: 'USR-8F4A2C91E0', idTipoDia: 'DIA_HABIL', tipoDia: 'DIA_HABIL', idTipoHora: 'HEN', modalidad: 'RN + HEN', idQuincena: '2026-Q21', horasTotales: 9, horasNocturnas: 9, horasFestivas: 0, brutoCop: 119524, deduccionCop: 9562, netoCop: 109962 },
+        { idHecho: 'HT-05', idFecha: '2026-11-05', fecha: '2026-11-05', idUsuarioDw: 'USR-8F4A2C91E0', idTipoDia: 'DIA_HABIL', tipoDia: 'DIA_HABIL', idTipoHora: 'HOD', modalidad: 'ORD', idQuincena: '2026-Q21', horasTotales: 8, horasNocturnas: 0, horasFestivas: 0, brutoCop: 76190, deduccionCop: 6095, netoCop: 70095 },
+        { idHecho: 'HT-06', idFecha: '2026-11-06', fecha: '2026-11-06', idUsuarioDw: 'USR-8F4A2C91E0', idTipoDia: 'DIA_HABIL', tipoDia: 'DIA_HABIL', idTipoHora: 'RNO', modalidad: 'ORD + RN', idQuincena: '2026-Q21', horasTotales: 9, horasNocturnas: 4, horasFestivas: 0, brutoCop: 99048, deduccionCop: 7924, netoCop: 91124 },
+        { idHecho: 'HT-07', idFecha: '2026-11-08', fecha: '2026-11-08', idUsuarioDw: 'USR-8F4A2C91E0', idTipoDia: 'DOMINGO_FESTIVO', tipoDia: 'DOMINGO_FESTIVO', idTipoHora: 'HENF', modalidad: 'DOM + HENF', idQuincena: '2026-Q21', horasTotales: 10, horasNocturnas: 4, horasFestivas: 10, brutoCop: 195238, deduccionCop: 15619, netoCop: 179619 },
+        { idHecho: 'HT-08', idFecha: '2026-11-09', fecha: '2026-11-09', idUsuarioDw: 'USR-8F4A2C91E0', idTipoDia: 'DIA_HABIL', tipoDia: 'DIA_HABIL', idTipoHora: 'HED', modalidad: 'ORD + HED', idQuincena: '2026-Q21', horasTotales: 10, horasNocturnas: 0, horasFestivas: 0, brutoCop: 100000, deduccionCop: 8000, netoCop: 92000 },
+        { idHecho: 'HT-09', idFecha: '2026-11-10', fecha: '2026-11-10', idUsuarioDw: 'USR-8F4A2C91E0', idTipoDia: 'DIA_HABIL', tipoDia: 'DIA_HABIL', idTipoHora: 'RNO', modalidad: 'RN', idQuincena: '2026-Q21', horasTotales: 8, horasNocturnas: 8, horasFestivas: 0, brutoCop: 102857, deduccionCop: 8229, netoCop: 94628 },
+        { idHecho: 'HT-10', idFecha: '2026-11-11', fecha: '2026-11-11', idUsuarioDw: 'USR-8F4A2C91E0', idTipoDia: 'DIA_HABIL', tipoDia: 'DIA_HABIL', idTipoHora: 'HEN', modalidad: 'ORD + HEN', idQuincena: '2026-Q21', horasTotales: 10, horasNocturnas: 2, horasFestivas: 0, brutoCop: 109524, deduccionCop: 8762, netoCop: 100762 },
+        { idHecho: 'HT-11', idFecha: '2026-11-12', fecha: '2026-11-12', idUsuarioDw: 'USR-8F4A2C91E0', idTipoDia: 'DIA_HABIL', tipoDia: 'DIA_HABIL', idTipoHora: 'HOD', modalidad: 'ORD', idQuincena: '2026-Q21', horasTotales: 8, horasNocturnas: 0, horasFestivas: 0, brutoCop: 76190, deduccionCop: 6095, netoCop: 70095 },
+        { idHecho: 'HT-12', idFecha: '2026-11-13', fecha: '2026-11-13', idUsuarioDw: 'USR-8F4A2C91E0', idTipoDia: 'DIA_HABIL', tipoDia: 'DIA_HABIL', idTipoHora: 'HEN', modalidad: 'RN + HEN', idQuincena: '2026-Q21', horasTotales: 8, horasNocturnas: 8, horasFestivas: 0, brutoCop: 108571, deduccionCop: 8686, netoCop: 99885 }
       ];
       return {
         esDemo: true,
         hechoTurno: hechosDemo,
-        dimFecha: hechosDemo.map(h => ({ idFecha: h.fecha, tipoDia: h.tipoDia })),
+        dimFecha: hechosDemo.map(h => ({ idFecha: h.fecha, fecha: h.fecha, tipoDia: h.tipoDia })),
         dimUsuario: [{ idUsuarioDw: 'USR-8F4A2C91E0', rol: 'OPERADOR_TURNOS', jornadaLey: '42h (Ley 2101/2021)' }],
         dimTipoDia: [
-          { codigo: 'DIA_HABIL', descripcion: 'Lunes a Sábado Ordinario', topeOrdinarioHoras: 10 },
-          { codigo: 'DOMINGO_FESTIVO', descripcion: 'Dominical / Festivo (Ley 2466/2025 +90%)', topeOrdinarioHoras: 8 }
+          { idTipoDia: 'DIA_HABIL', codigo: 'DIA_HABIL', descripcion: 'Lunes a Sábado Ordinario', topeOrdinarioHoras: 10 },
+          { idTipoDia: 'DOMINGO_FESTIVO', codigo: 'DOMINGO_FESTIVO', descripcion: 'Dominical / Festivo (Ley 2466/2025 +90%)', topeOrdinarioHoras: 8 }
         ],
         dimTipoHora: [
-          { codigo: 'HOD', nombre: 'Hora Ordinaria Diurna', categoria: 'Ordinaria', porcentajeRecargo2026: 0, horasAcum: 48, montoBrutoCop: 457142 },
-          { codigo: 'RNO', nombre: 'Recargo Nocturno Ordinario', categoria: 'Recargo Nocturno', porcentajeRecargo2026: 35, horasAcum: 26, montoBrutoCop: 334286 },
-          { codigo: 'HED', nombre: 'Hora Extra Diurna', categoria: 'Trabajo Suplementario', porcentajeRecargo2026: 25, horasAcum: 6, montoBrutoCop: 71429 },
-          { codigo: 'HEN', nombre: 'Hora Extra Nocturna', categoria: 'Trabajo Suplementario', porcentajeRecargo2026: 75, horasAcum: 8, montoBrutoCop: 133333 },
-          { codigo: 'DOM', nombre: 'Dominical / Festivo Ordinario', categoria: 'Dominical y Festivo', porcentajeRecargo2026: 90, horasAcum: 16, montoBrutoCop: 289524 },
-          { codigo: 'HENF', nombre: 'Extra Nocturna Dominical/Festiva', categoria: 'Dominical y Festivo', porcentajeRecargo2026: 165, horasAcum: 2, montoBrutoCop: 50476 }
+          { idTipoHora: 'HOD', codigo: 'HOD', nombre: 'Hora Ordinaria Diurna', categoria: 'Ordinaria', porcentajeRecargo2026: 0, horasAcum: 48, montoBrutoCop: 457142 },
+          { idTipoHora: 'RNO', codigo: 'RNO', nombre: 'Recargo Nocturno Ordinario', categoria: 'Recargo Nocturno', porcentajeRecargo2026: 35, horasAcum: 26, montoBrutoCop: 334286 },
+          { idTipoHora: 'HED', codigo: 'HED', nombre: 'Hora Extra Diurna', categoria: 'Trabajo Suplementario', porcentajeRecargo2026: 25, horasAcum: 6, montoBrutoCop: 71429 },
+          { idTipoHora: 'HEN', codigo: 'HEN', nombre: 'Hora Extra Nocturna', categoria: 'Trabajo Suplementario', porcentajeRecargo2026: 75, horasAcum: 8, montoBrutoCop: 133333 },
+          { idTipoHora: 'DOM', codigo: 'DOM', nombre: 'Dominical / Festivo Ordinario', categoria: 'Dominical y Festivo', porcentajeRecargo2026: 90, horasAcum: 16, montoBrutoCop: 289524 },
+          { idTipoHora: 'HENF', codigo: 'HENF', nombre: 'Extra Nocturna Dominical/Festiva', categoria: 'Dominical y Festivo', porcentajeRecargo2026: 165, horasAcum: 2, montoBrutoCop: 50476 }
         ],
         dimQuincena: [
           { idQuincena: '2026-Q18', periodo: '16–30 Sep 2026', estado: 'CERRADA', horasTotales: 88, brutoTotal: 1125000, netoTotal: 1035000 },
@@ -7127,12 +7132,14 @@ REGLAS:
 
     function mostrarPaginaPbi(numPagina) {
       window._pbiPaginaActual = numPagina;
-      [1, 2, 3].forEach(n => {
+      [1, 2, 3, 4].forEach(n => {
         const b = document.getElementById('pbiPageBtn' + n);
         if (b) {
           b.className = (n === numPagina) ? 'btn btn-primary' : 'btn btn-ghost';
         }
       });
+      const foot = document.getElementById('pbiFooterPageIndicator');
+      if (foot) foot.innerText = `Página ${numPagina} de 4 · Modelo Dimensional Kimball`;
 
       destruirChartsPbi();
       const cont = document.getElementById('pbiPageContent');
@@ -7365,7 +7372,7 @@ REGLAS:
           }
         }, 40);
 
-      } else {
+      } else if (numPagina === 3) {
         const quincenas = (dw && dw.dimQuincena && dw.dimQuincena.length > 1) ? dw.dimQuincena : demoDefault.dimQuincena;
         const filasQ = quincenas.map(q => `
           <tr style="border-bottom:1px solid var(--border);">
@@ -7453,6 +7460,69 @@ REGLAS:
             });
           }
         }, 40);
+      } else {
+        cont.innerHTML = `
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:.85rem;margin-bottom:1.1rem;">
+            <div style="padding:.95rem;background:var(--surface2);border:1px solid var(--border);border-radius:10px;border-left:4px solid var(--accent);">
+              <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;color:var(--accent);">1. Fuentes de Datos (OLTP + Normativa)</div>
+              <div style="font-size:.78rem;margin-top:.35rem;color:var(--text);">Base relacional H2/PostgreSQL (entidades <code>Usuario</code>, <code>ConfigNomina</code>, <code>Registro</code>, <code>Historial</code>) + Calendario de Festivos Colombia (Ley 51/1983) + Parámetros Ley 2101/2021 (42 h) y Ley 2466/2025 (+90%).</div>
+            </div>
+            <div style="padding:.95rem;background:var(--surface2);border:1px solid var(--border);border-radius:10px;border-left:4px solid #10b981;">
+              <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;color:#10b981;">2. Proceso ETL y Anonimización</div>
+              <div style="font-size:.78rem;margin-top:.35rem;color:var(--text);">Ejecutado en <code>DataWarehouseEtlService.java</code>: Extracción JPA, Transformación con hash irreversible <code>SHA-256</code> (Ley 1581 de 2012) y Carga en Esquema Estrella expuesto en <code>GET /api/analytics/dw</code>.</div>
+            </div>
+            <div style="padding:.95rem;background:var(--surface2);border:1px solid var(--border);border-radius:10px;border-left:4px solid #f59e0b;">
+              <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;color:#f59e0b;">3. Integración Web y Power BI</div>
+              <div style="font-size:.78rem;margin-top:.35rem;color:var(--text);">Doble integración: (a) Lienzo interactivo de 4 páginas alimentado por <code>/api/analytics/dw</code> y (b) Conector Web / Power Query M + visor <code>&lt;iframe&gt;</code> para informes publicados en Power BI Service.</div>
+            </div>
+          </div>
+
+          <div style="padding:1.1rem;background:var(--surface2);border:1px solid var(--border);border-radius:12px;">
+            <div style="font-size:.78rem;font-weight:700;color:var(--text);margin-bottom:.85rem;">
+              Vista de Modelo Dimensional (Esquema Estrella de Kimball — Relaciones 1 : N hacia Hecho_Turno)
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1.25fr 1fr;gap:.9rem;align-items:center;">
+              <div style="display:flex;flex-direction:column;gap:.75rem;">
+                <div style="padding:.75rem;background:var(--surface);border:1px solid var(--border);border-top:3px solid #38bdf8;border-radius:8px;font-family:var(--font-mono);font-size:.72rem;">
+                  <div style="font-weight:700;color:#38bdf8;margin-bottom:.25rem;">Dim_Fecha (1 : *)</div>
+                  <div>PK idFecha · fecha · diaSemana · mes · anio · esDomingo · esFestivo</div>
+                </div>
+                <div style="padding:.75rem;background:var(--surface);border:1px solid var(--border);border-top:3px solid #10b981;border-radius:8px;font-family:var(--font-mono);font-size:.72rem;">
+                  <div style="font-weight:700;color:#10b981;margin-bottom:.25rem;">Dim_TipoDia (1 : *)</div>
+                  <div>PK idTipoDia · codigo · descripcion · topeOrdinarioHoras</div>
+                </div>
+                <div style="padding:.75rem;background:var(--surface);border:1px solid var(--border);border-top:3px solid #a855f7;border-radius:8px;font-family:var(--font-mono);font-size:.72rem;">
+                  <div style="font-weight:700;color:#a855f7;margin-bottom:.25rem;">Dim_Usuario (1 : *)</div>
+                  <div>PK idUsuarioDw (SHA-256) · codigoAnonimo · rol</div>
+                </div>
+              </div>
+
+              <div style="padding:1rem;background:var(--surface);border:2px solid var(--accent);border-radius:10px;font-family:var(--font-mono);font-size:.73rem;box-shadow:0 6px 20px rgba(0,0,0,0.06);">
+                <div style="font-weight:800;color:var(--accent);font-size:.82rem;margin-bottom:.4rem;border-bottom:1px solid var(--border);padding-bottom:.35rem;">TABLA DE HECHOS CENTRAL · Hecho_Turno</div>
+                <div>PK idHecho</div>
+                <div style="color:#38bdf8;">FK idFecha → Dim_Fecha (1:*)</div>
+                <div style="color:#10b981;">FK idTipoDia → Dim_TipoDia (1:*)</div>
+                <div style="color:#a855f7;">FK idUsuarioDw → Dim_Usuario (1:*)</div>
+                <div style="color:#f59e0b;">FK idTipoHora → Dim_TipoHora (1:*)</div>
+                <div style="color:#ec4899;">FK idQuincena → Dim_Quincena (1:*)</div>
+                <div style="margin-top:.35rem;padding-top:.35rem;border-top:1px dashed var(--border);color:var(--text);">
+                  Métricas aditivas: horasTotales, horasNocturnas, horasFestivas, brutoCop, deduccionCop, netoCop
+                </div>
+              </div>
+
+              <div style="display:flex;flex-direction:column;gap:.75rem;">
+                <div style="padding:.75rem;background:var(--surface);border:1px solid var(--border);border-top:3px solid #f59e0b;border-radius:8px;font-family:var(--font-mono);font-size:.72rem;">
+                  <div style="font-weight:700;color:#f59e0b;margin-bottom:.25rem;">Dim_TipoHora (1 : *)</div>
+                  <div>PK idTipoHora · codigo · nombre · categoria · porcentajeRecargo2026</div>
+                </div>
+                <div style="padding:.75rem;background:var(--surface);border:1px solid var(--border);border-top:3px solid #ec4899;border-radius:8px;font-family:var(--font-mono);font-size:.72rem;">
+                  <div style="font-weight:700;color:#ec4899;margin-bottom:.25rem;">Dim_Quincena (1 : *)</div>
+                  <div>PK idQuincena · periodo · estado · horasTotales · brutoTotal · netoTotal</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
       }
     }
 

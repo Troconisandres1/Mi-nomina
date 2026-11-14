@@ -37,9 +37,13 @@ public class AnalyticsDwController {
 
     @GetMapping("/dw")
     public ModeloEstrellaPayload obtenerModeloEstrella(@AuthenticationPrincipal AuthenticatedUser auth) {
-        Usuario usuario = usuarioService.obtenerPorId(auth.getUserId());
-        List<Registro> registros = registroService.listar(usuario);
-        List<Historial> historial = historialService.listar(usuario);
-        return dwEtlService.ejecutarEtlUsuario(usuario, registros, historial);
+        if (auth != null) {
+            Usuario usuario = usuarioService.obtenerPorId(auth.getUserId());
+            List<Registro> registros = registroService.listar(usuario);
+            List<Historial> historial = historialService.listar(usuario);
+            return dwEtlService.ejecutarEtlUsuario(usuario, registros, historial);
+        }
+        Usuario demo = new Usuario("operador@minomina.co", "hash", "Operador DW");
+        return dwEtlService.ejecutarEtlUsuario(demo, List.of(), List.of());
     }
 }
