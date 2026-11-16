@@ -3743,30 +3743,42 @@
         </div>
 
         <!-- Parámetros del modelo -->
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.85rem;margin-bottom:1.25rem;">
-          <div>
-            <label style="display:block;font-size:.72rem;font-weight:600;color:var(--muted);margin-bottom:.35rem;">Objetivo de Optimización</label>
-            <select id="optModo" class="input" onchange="ejecutarOptimizacionTurnos()" style="width:100%;padding:.55rem .75rem;">
+        <div class="reg-pill-row" style="grid-template-columns:repeat(auto-fit,minmax(210px,1fr));margin-bottom:.85rem;">
+          <div class="reg-field-wrap">
+            <label class="reg-label">Objetivo de Optimización</label>
+            <select id="optModo" class="inp reg-inp" onchange="alCambiarModoOptimizador()" style="width:100%;">
               <option value="MAXIMIZAR_DINERO">Maximizar dinero (ingreso neto)</option>
-              <option value="EQUILIBRIO">Equilibrio dinero y descanso (turnos no pesados)</option>
+              <option value="EQUILIBRIO">Equilibrio dinero y descanso (sin 10h)</option>
               <option value="PRIORIZAR_DESCANSO">Priorizar descanso (turnos ligeros)</option>
             </select>
           </div>
-          <div>
-            <label style="display:block;font-size:.72rem;font-weight:600;color:var(--muted);margin-bottom:.35rem;">Fecha Inicio Quincena</label>
-            <input type="date" id="optFechaInicio" class="input" value="2026-11-01" style="width:100%;padding:.55rem .75rem;">
+          <div class="reg-field-wrap">
+            <label class="reg-label">Franja Horaria</label>
+            <select id="optFranja" class="inp reg-inp" onchange="ejecutarOptimizacionTurnos()" style="width:100%;">
+              <option value="TODAS">Todas las franjas (rotativo)</option>
+              <option value="DIURNA">Diurna / Mañana (06:00 - 19:00)</option>
+              <option value="MIXTA">Tarde / Mixta (12:00 - 22:30)</option>
+              <option value="NOCTURNA">Nocturna (20:00 - 06:30)</option>
+            </select>
           </div>
-          <div>
-            <label style="display:block;font-size:.72rem;font-weight:600;color:var(--muted);margin-bottom:.35rem;">Máx. Días Consecutivos (R4)</label>
-            <input type="number" id="optMaxConsec" class="input" value="6" min="3" max="6" style="width:100%;padding:.55rem .75rem;">
+          <div class="reg-field-wrap">
+            <label class="reg-label">Fecha Inicio Quincena</label>
+            <input type="date" id="optFechaInicio" class="inp reg-inp reg-date-inp" value="2026-11-01" onchange="ejecutarOptimizacionTurnos()">
           </div>
-          <div>
-            <label style="display:block;font-size:.72rem;font-weight:600;color:var(--muted);margin-bottom:.35rem;">Descanso Mín. Entre Turnos (h)</label>
-            <input type="number" id="optDescansoMin" class="input" value="12" min="8" max="16" style="width:100%;padding:.55rem .75rem;">
+        </div>
+
+        <div class="reg-pill-row" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr));margin-bottom:1.25rem;">
+          <div class="reg-field-wrap">
+            <label class="reg-label">Días de Descanso (Quincena, mín. 2)</label>
+            <input type="number" id="optDiasDescanso" class="inp reg-inp" value="2" min="2" max="7" onchange="ejecutarOptimizacionTurnos()">
           </div>
-          <div>
-            <label style="display:block;font-size:.72rem;font-weight:600;color:var(--muted);margin-bottom:.35rem;">Máx. Días Laborados ( de 15)</label>
-            <input type="number" id="optMaxDiasQ" class="input" value="13" min="8" max="14" style="width:100%;padding:.55rem .75rem;">
+          <div class="reg-field-wrap">
+            <label class="reg-label">Máx. Días Consecutivos (R4)</label>
+            <input type="number" id="optMaxConsec" class="inp reg-inp" value="6" min="3" max="6" onchange="ejecutarOptimizacionTurnos()">
+          </div>
+          <div class="reg-field-wrap">
+            <label class="reg-label">Descanso Mín. Entre Turnos (h)</label>
+            <input type="number" id="optDescansoMin" class="inp reg-inp" value="12" min="8" max="16" onchange="ejecutarOptimizacionTurnos()">
           </div>
         </div>
 
@@ -7541,6 +7553,19 @@ REGLAS:
       ejecutarOptimizacionTurnos();
     }
 
+    function alCambiarModoOptimizador() {
+      const modo = (document.getElementById('optModo') || {}).value || 'MAXIMIZAR_DINERO';
+      const descEl = document.getElementById('optDiasDescanso');
+      if (descEl) {
+        if (modo === 'PRIORIZAR_DESCANSO' && parseInt(descEl.value || '2', 10) < 4) {
+          descEl.value = '4';
+        } else if (modo === 'MAXIMIZAR_DINERO' && parseInt(descEl.value || '2', 10) === 4) {
+          descEl.value = '2';
+        }
+      }
+      ejecutarOptimizacionTurnos();
+    }
+
     async function ejecutarOptimizacionTurnos() {
       const statusEl = document.getElementById('optStatusMsg');
       const wrapEl = document.getElementById('optResultadosWrap');
@@ -7549,15 +7574,17 @@ REGLAS:
       const fechaInicio = (document.getElementById('optFechaInicio') || {}).value || '2026-11-01';
       const maxDiasConsecutivos = parseInt((document.getElementById('optMaxConsec') || {}).value || '6', 10);
       const descansoMinimoHoras = parseInt((document.getElementById('optDescansoMin') || {}).value || '12', 10);
-      const maxDiasLaborablesQuincena = parseInt((document.getElementById('optMaxDiasQ') || {}).value || '13', 10);
+      const diasDescansoQuincena = Math.max(2, Math.min(7, parseInt((document.getElementById('optDiasDescanso') || {}).value || '2', 10)));
+      const maxDiasLaborablesQuincena = 15 - diasDescansoQuincena;
       const modo = (document.getElementById('optModo') || {}).value || 'MAXIMIZAR_DINERO';
+      const franjaHoraria = (document.getElementById('optFranja') || {}).value || 'TODAS';
 
       const formulaEl = document.getElementById('optFormulaObj');
       if (formulaEl) {
         if (modo === 'EQUILIBRIO') {
-          formulaEl.innerHTML = 'Maximizar Z = &Sigma;<sub>d &isin; D</sub> &Sigma;<sub>s &isin; S</sub> (v<sub>d,s</sub> &minus; fatiga<sub>s</sub>) &middot; x<sub>d,s</sub> + bono<sub>descanso</sub> &middot; d&iacute;as<sub>libres</sub>';
+          formulaEl.innerHTML = 'Maximizar Z = &Sigma;<sub>d &isin; D</sub> &Sigma;<sub>s &isin; S</sub> (v<sub>d,s</sub> &minus; fatiga<sub>s</sub>) &middot; x<sub>d,s</sub> &nbsp;&nbsp; sujeto a d&iacute;as<sub>descanso</sub> &ge; ' + diasDescansoQuincena;
         } else if (modo === 'PRIORIZAR_DESCANSO') {
-          formulaEl.innerHTML = 'Maximizar Z = &Sigma;<sub>d &isin; D</sub> &Sigma;<sub>s &isin; S</sub> (v<sub>d,s</sub> &minus; fatiga_alta<sub>s</sub>) &middot; x<sub>d,s</sub> + bono_alto<sub>descanso</sub> &middot; d&iacute;as<sub>libres</sub>';
+          formulaEl.innerHTML = 'Maximizar Z = &Sigma;<sub>d &isin; D</sub> &Sigma;<sub>s &isin; S</sub> (v<sub>d,s</sub> &minus; fatiga_alta<sub>s</sub>) &middot; x<sub>d,s</sub> &nbsp;&nbsp; sujeto a d&iacute;as<sub>descanso</sub> &ge; ' + diasDescansoQuincena;
         } else {
           formulaEl.innerHTML = 'Maximizar Z = &Sigma;<sub>d &isin; D</sub> &Sigma;<sub>s &isin; S</sub> v<sub>d,s</sub> &middot; x<sub>d,s</sub> &nbsp;&nbsp; con x<sub>d,s</sub> &isin; {0, 1}';
         }
@@ -7573,7 +7600,9 @@ REGLAS:
             maxDiasConsecutivos,
             descansoMinimoHoras,
             maxDiasLaborablesQuincena,
-            modo
+            diasDescansoQuincena,
+            modo,
+            franjaHoraria
           })
         });
         if (!res.ok) throw new Error('Error HTTP ' + res.status);

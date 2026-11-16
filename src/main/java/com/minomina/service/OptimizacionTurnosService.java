@@ -36,9 +36,15 @@ public class OptimizacionTurnosService {
     ) {}
 
     public static final List<CatalogoTurno> CATALOGO_TURNOS = List.of(
-            new CatalogoTurno("DIURNO_8H", "Diurno Estándar (06:00 - 14:30)",
+            new CatalogoTurno("DIURNO_8H", "Diurno Mañana (06:00 - 14:30)",
                     LocalTime.of(6, 0), LocalTime.of(14, 30),
                     LocalTime.of(12, 0), LocalTime.of(12, 30), 8.0, 0.0),
+            new CatalogoTurno("CENTRAL_8H", "Diurno Central (08:00 - 16:30)",
+                    LocalTime.of(8, 0), LocalTime.of(16, 30),
+                    LocalTime.of(12, 30), LocalTime.of(13, 0), 8.0, 0.0),
+            new CatalogoTurno("TARDE_8H", "Tarde Estándar (12:00 - 20:30)",
+                    LocalTime.of(12, 0), LocalTime.of(20, 30),
+                    LocalTime.of(16, 0), LocalTime.of(16, 30), 8.0, 1.5),
             new CatalogoTurno("MIXTO_8H", "Mixto Tarde-Noche (14:00 - 22:30)",
                     LocalTime.of(14, 0), LocalTime.of(22, 30),
                     LocalTime.of(18, 0), LocalTime.of(18, 30), 8.0, 3.5),
@@ -69,13 +75,32 @@ public class OptimizacionTurnosService {
         }
     }
 
+    public enum FranjaHoraria {
+        TODAS("Todas las franjas (rotativo)"),
+        DIURNA("Diurna / Mañana (06:00 - 19:00)"),
+        MIXTA("Tarde / Mixta (12:00 - 22:30)"),
+        NOCTURNA("Nocturna (20:00 - 06:30)");
+
+        private final String descripcion;
+
+        FranjaHoraria(String descripcion) {
+            this.descripcion = descripcion;
+        }
+
+        public String getDescripcion() {
+            return descripcion;
+        }
+    }
+
     public record ParametrosOptimizacion(
             LocalDate fechaInicio,
             int diasHorizonte,
             int maxDiasConsecutivos,
             int descansoMinimoHoras,
             int maxDiasLaborablesQuincena,
-            ModoOptimizacion modo
+            Integer diasDescansoQuincena,
+            ModoOptimizacion modo,
+            FranjaHoraria franjaHoraria
     ) {
         public ParametrosOptimizacion(
                 LocalDate fechaInicio,
@@ -85,7 +110,19 @@ public class OptimizacionTurnosService {
                 int maxDiasLaborablesQuincena
         ) {
             this(fechaInicio, diasHorizonte, maxDiasConsecutivos, descansoMinimoHoras,
-                    maxDiasLaborablesQuincena, ModoOptimizacion.MAXIMIZAR_DINERO);
+                    maxDiasLaborablesQuincena, null, ModoOptimizacion.MAXIMIZAR_DINERO, FranjaHoraria.TODAS);
+        }
+
+        public ParametrosOptimizacion(
+                LocalDate fechaInicio,
+                int diasHorizonte,
+                int maxDiasConsecutivos,
+                int descansoMinimoHoras,
+                int maxDiasLaborablesQuincena,
+                ModoOptimizacion modo
+        ) {
+            this(fechaInicio, diasHorizonte, maxDiasConsecutivos, descansoMinimoHoras,
+                    maxDiasLaborablesQuincena, null, modo, FranjaHoraria.TODAS);
         }
 
         public static ParametrosOptimizacion porDefecto(LocalDate inicio) {
@@ -95,7 +132,9 @@ public class OptimizacionTurnosService {
                     6,
                     12,
                     13,
-                    ModoOptimizacion.MAXIMIZAR_DINERO
+                    2,
+                    ModoOptimizacion.MAXIMIZAR_DINERO,
+                    FranjaHoraria.TODAS
             );
         }
     }
@@ -162,8 +201,21 @@ public class OptimizacionTurnosService {
         int nDias = Math.max(7, Math.min(16, params.diasHorizonte() > 0 ? params.diasHorizonte() : 15));
         int maxConsec = Math.max(3, Math.min(6, params.maxDiasConsecutivos() > 0 ? params.maxDiasConsecutivos() : 6));
         int minDescansoH = Math.max(8, Math.min(16, params.descansoMinimoHoras() > 0 ? params.descansoMinimoHoras() : 12));
-        int maxDiasQuincena = Math.max(6, Math.min(nDias, params.maxDiasLaborablesQuincena() > 0 ? params.maxDiasLaborablesQuincena() : 13));
         ModoOptimizacion modo = params.modo() != null ? params.modo() : ModoOptimizacion.MAXIMIZAR_DINERO;
+        FranjaHoraria franja = params.franjaHoraria() != null ? params.franjaHoraria() : FranjaHoraria.TODAS;
+
+        int diasDescansoMin;
+        if (params.diasDescansoQuincena() != null && params.diasDescansoQuincena() > 0) {
+            diasDescansoMin = Math.max(2, Math.min(nDias - 6, params.diasDescansoQuincena()));
+        } else if (params.maxDiasLaborablesQuincena() > 0) {
+            diasDescansoMin = Math.max(2, nDias - params.maxDiasLaborablesQuincena());
+        } else {
+            diasDescansoMin = (modo == ModoOptimizacion.PRIORIZAR_DESCANSO) ? 4 : 2;
+        }
+        if (modo == ModoOptimizacion.PRIORIZAR_DESCANSO && params.diasDescansoQuincena() == null) {
+            diasDescansoMin = Math.max(diasDescansoMin, 4);
+        }
+        int maxDiasQuincena = Math.max(6, Math.min(nDias - 2, nDias - diasDescansoMin));
 
         PayrollEngine.ConfigEfectiva cfgInicial = payrollEngine.configEfectiva(cfg, fechaInicio);
         double limiteSemanalBase = cfgInicial.es42h() ? 42.0 : 44.0;
@@ -172,6 +224,11 @@ public class OptimizacionTurnosService {
         double bonoDescanso = calcularBonoDescanso(valorHoraBase, modo);
 
         int numTurnos = CATALOGO_TURNOS.size();
+        boolean[] turnoHabilitado = new boolean[numTurnos];
+        for (int s = 0; s < numTurnos; s++) {
+            turnoHabilitado[s] = perteneceAFranja(CATALOGO_TURNOS.get(s), franja);
+        }
+
         EvaluacionCandidato[][] matriz = new EvaluacionCandidato[nDias][numTurnos];
         LocalDate[] fechas = new LocalDate[nDias];
         boolean[] esDomFest = new boolean[nDias];
@@ -200,7 +257,9 @@ public class OptimizacionTurnosService {
                 ev.transporte = auxDiario;
                 ev.deducciones = ev.pagoBruto * 0.08; // 4% salud + 4% pensión
                 ev.valorNeto = ev.pagoBruto + ev.transporte - ev.deducciones;
-                ev.valorObjetivo = calcularValorObjetivo(ev, t, valorHoraBase, modo);
+                ev.valorObjetivo = turnoHabilitado[s]
+                        ? calcularValorObjetivo(ev, t, d, s, valorHoraBase, modo, franja)
+                        : -1.0;
                 matriz[d][s] = ev;
             }
         }
@@ -323,24 +382,34 @@ public class OptimizacionTurnosService {
         );
     }
 
-    private double calcularBonoDescanso(double valorHoraBase, ModoOptimizacion modo) {
-        return switch (modo) {
-            case MAXIMIZAR_DINERO -> 0.0;
-            case EQUILIBRIO -> valorHoraBase * 2.0;
-            case PRIORIZAR_DESCANSO -> valorHoraBase * 5.0;
+    private boolean perteneceAFranja(CatalogoTurno t, FranjaHoraria franja) {
+        return switch (franja) {
+            case TODAS -> true;
+            case DIURNA -> t.codigo().equals("DIURNO_8H") || t.codigo().equals("CENTRAL_8H") || t.codigo().equals("EXTENDIDO_10H");
+            case MIXTA -> t.codigo().equals("TARDE_8H") || t.codigo().equals("MIXTO_8H") || t.codigo().equals("CENTRAL_8H");
+            case NOCTURNA -> t.codigo().equals("NOCTURNO_8H") || t.codigo().equals("NOCTURNO_10H") || t.codigo().equals("MIXTO_8H");
         };
     }
 
-    private double calcularValorObjetivo(EvaluacionCandidato ev, CatalogoTurno t, double valorHoraBase, ModoOptimizacion modo) {
+    private double calcularBonoDescanso(double valorHoraBase, ModoOptimizacion modo) {
+        return 0.0;
+    }
+
+    private double calcularValorObjetivo(
+            EvaluacionCandidato ev, CatalogoTurno t, int dia, int sIdx,
+            double valorHoraBase, ModoOptimizacion modo, FranjaHoraria franja
+    ) {
         if (modo == ModoOptimizacion.MAXIMIZAR_DINERO) {
-            return ev.valorNeto;
+            double rotacionTieBreak = ((dia + sIdx) % 3) * 15.0;
+            return ev.valorNeto + rotacionTieBreak;
         }
-        double horasExtendidas = Math.max(0.0, t.horasTotales() - 8.0);
-        double factorExt = (modo == ModoOptimizacion.EQUILIBRIO) ? 4.0 : 5.0;
-        double factorNoc = (modo == ModoOptimizacion.EQUILIBRIO) ? 0.65 : 1.0;
-        double penalizacionFatiga = (horasExtendidas * valorHoraBase * factorExt)
-                + (t.horasNocturnas() * valorHoraBase * factorNoc);
-        return Math.max(0.0, ev.valorNeto - penalizacionFatiga);
+        if (t.horasTotales() > 8.0) {
+            return -1.0;
+        }
+        double factorNoc = (modo == ModoOptimizacion.EQUILIBRIO) ? 0.55 : 0.95;
+        double penalizacionFatiga = t.horasNocturnas() * valorHoraBase * factorNoc;
+        double bonoRotacion = ((dia + sIdx) % 3 == 0) ? (valorHoraBase * 0.65) : (((dia + sIdx) % 2) * 25.0);
+        return Math.max(1.0, ev.valorNeto - penalizacionFatiga + bonoRotacion);
     }
 
     private static class EstadoBnB {
@@ -372,6 +441,9 @@ public class OptimizacionTurnosService {
             int[] asignacionActual,
             EstadoBnB estado
     ) {
+        if (estado.nodosExplorados > 80_000) {
+            return;
+        }
         estado.nodosExplorados++;
 
         if (dia == nDias) {
@@ -414,20 +486,23 @@ public class OptimizacionTurnosService {
             int turnoPrevio = (dia > 0) ? asignacionActual[dia - 1] : -1;
 
             for (int s : ordenTurnos) {
+                EvaluacionCandidato ev = matriz[dia][s];
+                if (ev.valorObjetivo < 0) {
+                    continue;
+                }
+
                 // R4: Descanso mínimo entre salida de d-1 y entrada de d
                 if (turnoPrevio != -1 && !transicionValida[turnoPrevio][s]) {
                     continue;
                 }
 
-                EvaluacionCandidato ev = matriz[dia][s];
+                // R2 y R3: Tope ordinario semanal (42h/44h) y tope suplementario semanal (12h)
+                double cupoOrdDisponible = Math.max(0.0, limiteSemanal - ordSem);
+                double ordTomadas = Math.min(ev.horasOrd, cupoOrdDisponible);
+                double extPorTopeSemanal = Math.max(0.0, ev.horasOrd - ordTomadas);
+                double extTotalesTurno = ev.horasExt + extPorTopeSemanal;
 
-                // R2: Tope de horas ordinarias semanales (44h / 42h)
-                if (ordSem + ev.horasOrd > limiteSemanal + 1e-6) {
-                    continue;
-                }
-
-                // R3: Tope legal de 12 horas extras semanales
-                if (extSem + ev.horasExt > 12.0 + 1e-6) {
+                if (extSem + extTotalesTurno > 12.0 + 1e-6) {
                     continue;
                 }
 
@@ -437,8 +512,8 @@ public class OptimizacionTurnosService {
                         maxConsecutivos, maxDiasQuincena, bonoDescanso, cfg,
                         diasConsecutivosActual + 1,
                         diasTrabajadosTotal + 1,
-                        ordSem + ev.horasOrd,
-                        extSem + ev.horasExt,
+                        ordSem + ordTomadas,
+                        extSem + extTotalesTurno,
                         valorAcumulado + ev.valorObjetivo,
                         asignacionActual, estado
                 );

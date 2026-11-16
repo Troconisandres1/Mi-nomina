@@ -60,18 +60,25 @@ class OptimizacionYDwTest {
         LocalDate inicio = LocalDate.of(2026, 11, 1);
 
         var paramsMax = new ParametrosOptimizacion(
-                inicio, 15, 6, 12, 13, OptimizacionTurnosService.ModoOptimizacion.MAXIMIZAR_DINERO);
+                inicio, 15, 6, 12, 13, 2,
+                OptimizacionTurnosService.ModoOptimizacion.MAXIMIZAR_DINERO,
+                OptimizacionTurnosService.FranjaHoraria.TODAS);
         var paramsEquilibrio = new ParametrosOptimizacion(
-                inicio, 15, 6, 12, 13, OptimizacionTurnosService.ModoOptimizacion.EQUILIBRIO);
+                inicio, 15, 6, 12, 13, 2,
+                OptimizacionTurnosService.ModoOptimizacion.EQUILIBRIO,
+                OptimizacionTurnosService.FranjaHoraria.TODAS);
         var paramsDescanso = new ParametrosOptimizacion(
-                inicio, 15, 6, 12, 13, OptimizacionTurnosService.ModoOptimizacion.PRIORIZAR_DESCANSO);
+                inicio, 15, 6, 12, 11, 4,
+                OptimizacionTurnosService.ModoOptimizacion.PRIORIZAR_DESCANSO,
+                OptimizacionTurnosService.FranjaHoraria.DIURNA);
 
         ResultadoOptimizacion resMax = optimizacionService.optimizarQuincena(cfg, paramsMax, Collections.emptyList());
         ResultadoOptimizacion resEq = optimizacionService.optimizarQuincena(cfg, paramsEquilibrio, Collections.emptyList());
         ResultadoOptimizacion resDesc = optimizacionService.optimizarQuincena(cfg, paramsDescanso, Collections.emptyList());
 
-        assertEquals(OptimizacionTurnosService.ModoOptimizacion.EQUILIBRIO, resEq.modoOptimizacion());
-        assertEquals(OptimizacionTurnosService.ModoOptimizacion.PRIORIZAR_DESCANSO, resDesc.modoOptimizacion());
+        assertEquals(2, resMax.diasDescansoOptimo(), "Con R4=6 y 2 descansos configurados debe asignar exactamente 2 descansos");
+        assertEquals(2, resEq.diasDescansoOptimo(), "Con R4=6 y 2 descansos configurados debe asignar exactamente 2 descansos");
+        assertEquals(4, resDesc.diasDescansoOptimo(), "Con 4 descansos configurados debe asignar 4 descansos");
 
         assertTrue(resEq.totalHorasNocturnasOptimo() < resMax.totalHorasNocturnasOptimo(),
                 "Equilibrio debe asignar menos horas nocturnas que Maximizar Dinero");
@@ -80,8 +87,8 @@ class OptimizacionYDwTest {
         assertFalse(tieneTurno10hEnEquilibrio,
                 "Equilibrio no debe asignar turnos pesados de 10 horas");
 
-        assertTrue(resDesc.diasDescansoOptimo() >= resMax.diasDescansoOptimo(),
-                "Priorizar descanso debe mantener o aumentar los días libres");
+        assertEquals(0.0, resDesc.totalHorasNocturnasOptimo(), 0.01,
+                "Franja diurna no debe asignar horas nocturnas");
     }
 
     @Test
