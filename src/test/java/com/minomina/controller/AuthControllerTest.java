@@ -11,13 +11,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/**
- * Prueba de la capa Controller con MockMvc, contra el contexto real de Spring
- * (misma app.yml de pruebas: H2 en memoria, ver src/test/resources).
- * Automatiza exactamente lo que ya se verificó manualmente con curl durante
- * el diagnóstico de manejo de errores: datos inválidos → 400 con detalle por
- * campo, y un registro válido → 200 con mensaje de confirmación.
- */
 @SpringBootTest
 @AutoConfigureMockMvc
 class AuthControllerTest {

@@ -14,16 +14,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Port directo del motor de cálculo del frontend original (función calcularTurno
- * y calcularAcumuladoSemanal). Reglas:
- *  1. El descanso (break) no remunerado se descuenta minuto a minuto.
- *  2. Umbral diario: 10h laboradas (Lun-Sáb no festivo) u 8h (Dom/Festivo).
- *  3. Contador semanal solo con horas ORDINARIAS físicamente trabajadas
- *     (ordD+ordN días hábiles, domD+domN domingos/festivos hasta su límite).
- *     Las extras, compensatorios e incapacidades NO suman al contador semanal.
- *  4. El ciclo de semanas arranca desde el primer día registrado por el usuario.
- *  5. Cortes legales: 2026-07-01 sube dominical/festivo a 90%; 2026-07-15 pasa
- *     la jornada a 42h/semana y sube el valor hora.
+ * Motor de liquidación de turnos y cálculo de recargos según la normativa laboral colombiana.
  */
 @Service
 public class PayrollEngine {

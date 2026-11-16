@@ -9,9 +9,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Convierte un Map&lt;String,Object&gt; (por ejemplo el "desglose" de horas de un turno)
- * a una columna de texto JSON y viceversa. Reemplaza la flexibilidad de documentos
- * de Firestore dentro de una columna relacional.
+ * Conversor JPA entre Map&lt;String, Object&gt; y columna JSON.
  */
 @Converter
 public class JsonMapConverter implements AttributeConverter<Map<String, Object>, String> {

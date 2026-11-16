@@ -61,10 +61,7 @@ public class UsuarioService {
         }
         Usuario u = new Usuario(req.email().toLowerCase(), passwordEncoder.encode(req.password()), req.nombre());
 
-        // Solo si ADMIN_EMAIL fue configurado explícitamente (nunca por defecto
-        // en el código) y coincide exactamente, el registro queda como ADMIN
-        // aprobado automáticamente. Si adminBootstrapEmail está vacío, esta
-        // condición nunca es verdadera y CUALQUIER registro cae al else.
+        // Asignación automática de rol ADMIN únicamente si coincide con ADMIN_EMAIL
         boolean esElAdminConfigurado = adminBootstrapEmail != null
                 && !adminBootstrapEmail.isBlank()
                 && req.email().equalsIgnoreCase(adminBootstrapEmail);

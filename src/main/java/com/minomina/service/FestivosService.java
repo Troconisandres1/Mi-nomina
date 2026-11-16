@@ -6,10 +6,7 @@ import java.time.LocalDate;
 import java.util.Set;
 
 /**
- * Lista de festivos colombianos. Se mantiene como lista fija (igual al fallback
- * que ya tenía el frontend) para que el cálculo de nómina sea 100% determinístico
- * en el backend. Si se quiere, esto se puede reemplazar por una llamada a
- * https://date.nager.at/api/v3/PublicHolidays/{year}/CO con un @Scheduled + caché.
+ * Catálogo de días festivos nacionales en Colombia.
  */
 @Service
 public class FestivosService {

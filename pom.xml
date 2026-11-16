@@ -15,7 +15,7 @@
     <artifactId>mi-nomina-backend</artifactId>
     <version>1.0.0</version>
     <name>mi-nomina-backend</name>
-    <description>Backend de Mi Nomina (Spring Boot) - reemplaza Firebase Auth/Firestore</description>
+    <description>Backend de Mi Nomina (Spring Boot)</description>
 
     <properties>
         <java.version>17</java.version>

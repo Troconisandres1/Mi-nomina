@@ -16,7 +16,6 @@ import java.util.Map;
 @Service
 public class RegistroService {
 
-    // Valor fijo del día de compensatorio remunerado (igual al frontend original).
     private static final double VALOR_COMPENSATORIO = 58364;
     private static final double HORAS_COMPENSATORIO = 7.55;
     private static final double FACTOR_SALARIO_DIARIO_INCAPACIDAD = 7.55;
@@ -42,8 +41,7 @@ public class RegistroService {
                 if (req.getHoraInicio() == null || req.getHoraFin() == null) {
                     throw new IllegalArgumentException("Ingresa hora de entrada y salida");
                 }
-                // Se elimina el registro existente de ese día ANTES de calcular el acumulado
-                // semanal, para que no se cuente a sí mismo (igual que en el JS original).
+                // Reemplazar registro previo del mismo día antes de calcular el acumulado semanal
                 registroRepository.findByUsuarioAndFecha(usuario, req.getFecha())
                         .ifPresent(registroRepository::delete);
                 registroRepository.flush();
@@ -158,8 +156,7 @@ public class RegistroService {
     }
 
     /**
-     * Recalcula TODOS los turnos NORMAL del usuario en orden cronológico con el
-     * motor actual. Equivalente al botón "Recalcular quincena actual" del frontend.
+     * Recalcula todos los turnos NORMAL del usuario en orden cronológico.
      */
     @Transactional
     public List<Registro> recalcularTodo(Usuario usuario) {

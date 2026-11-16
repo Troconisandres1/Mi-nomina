@@ -8,9 +8,7 @@ import java.time.Instant;
 import java.util.Map;
 
 /**
- * Endpoint de estado, público (no requiere token). Sirve para el flujo de
- * Pull Request del taller de CI/CD (Paso 5) y como comprobación rápida de
- * que el backend está arriba.
+ * Health check público del servicio.
  */
 @RestController
 @RequestMapping("/api/estado")

@@ -55,6 +55,36 @@ class OptimizacionYDwTest {
     }
 
     @Test
+    void modoEquilibrioYDescansoEvitanTurnosPesados() {
+        ConfigNomina cfg = ConfigNomina.porDefecto();
+        LocalDate inicio = LocalDate.of(2026, 11, 1);
+
+        var paramsMax = new ParametrosOptimizacion(
+                inicio, 15, 6, 12, 13, OptimizacionTurnosService.ModoOptimizacion.MAXIMIZAR_DINERO);
+        var paramsEquilibrio = new ParametrosOptimizacion(
+                inicio, 15, 6, 12, 13, OptimizacionTurnosService.ModoOptimizacion.EQUILIBRIO);
+        var paramsDescanso = new ParametrosOptimizacion(
+                inicio, 15, 6, 12, 13, OptimizacionTurnosService.ModoOptimizacion.PRIORIZAR_DESCANSO);
+
+        ResultadoOptimizacion resMax = optimizacionService.optimizarQuincena(cfg, paramsMax, Collections.emptyList());
+        ResultadoOptimizacion resEq = optimizacionService.optimizarQuincena(cfg, paramsEquilibrio, Collections.emptyList());
+        ResultadoOptimizacion resDesc = optimizacionService.optimizarQuincena(cfg, paramsDescanso, Collections.emptyList());
+
+        assertEquals(OptimizacionTurnosService.ModoOptimizacion.EQUILIBRIO, resEq.modoOptimizacion());
+        assertEquals(OptimizacionTurnosService.ModoOptimizacion.PRIORIZAR_DESCANSO, resDesc.modoOptimizacion());
+
+        assertTrue(resEq.totalHorasNocturnasOptimo() < resMax.totalHorasNocturnasOptimo(),
+                "Equilibrio debe asignar menos horas nocturnas que Maximizar Dinero");
+        boolean tieneTurno10hEnEquilibrio = resEq.planOptimo().stream()
+                .anyMatch(d -> !d.descansa() && d.codigoTurno().endsWith("_10H"));
+        assertFalse(tieneTurno10hEnEquilibrio,
+                "Equilibrio no debe asignar turnos pesados de 10 horas");
+
+        assertTrue(resDesc.diasDescansoOptimo() >= resMax.diasDescansoOptimo(),
+                "Priorizar descanso debe mantener o aumentar los días libres");
+    }
+
+    @Test
     void etlDataWarehouseGeneraEsquemaEstrellaConAnonimizacion() {
         Usuario u = new Usuario("trabajador@minomina.co", "hash", "Andrés Troconis");
         u.setId("uuid-1234-5678");

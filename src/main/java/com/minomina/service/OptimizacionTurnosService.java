@@ -12,11 +12,8 @@ import java.time.LocalTime;
 import java.util.*;
 
 /**
- * Servicio de Investigación de Operaciones (IO):
- * Formulación y resolución mediante Ramificación y Acotamiento (Branch and Bound)
- * del modelo de Programación Lineal Entera Binaria (PLE) para la asignación óptima
- * de turnos en una quincena, maximizando el ingreso neto del trabajador bajo las
- * restricciones legales colombianas (CST, Ley 2101 de 2021 y Ley 2466 de 2025).
+ * Modelo de Programación Lineal Entera Binaria (PLE) resuelto mediante
+ * Branch and Bound para la asignación quincenal de turnos.
  */
 @Service
 public class OptimizacionTurnosService {
@@ -56,20 +53,49 @@ public class OptimizacionTurnosService {
                     LocalTime.of(1, 0), LocalTime.of(1, 30), 10.0, 9.5)
     );
 
+    public enum ModoOptimizacion {
+        MAXIMIZAR_DINERO("Maximizar dinero (máximo ingreso neto)"),
+        EQUILIBRIO("Equilibrio dinero y descanso (turnos no pesados)"),
+        PRIORIZAR_DESCANSO("Priorizar descanso (turnos ligeros y más días libres)");
+
+        private final String descripcion;
+
+        ModoOptimizacion(String descripcion) {
+            this.descripcion = descripcion;
+        }
+
+        public String getDescripcion() {
+            return descripcion;
+        }
+    }
+
     public record ParametrosOptimizacion(
             LocalDate fechaInicio,
             int diasHorizonte,
             int maxDiasConsecutivos,
             int descansoMinimoHoras,
-            int maxDiasLaborablesQuincena
+            int maxDiasLaborablesQuincena,
+            ModoOptimizacion modo
     ) {
+        public ParametrosOptimizacion(
+                LocalDate fechaInicio,
+                int diasHorizonte,
+                int maxDiasConsecutivos,
+                int descansoMinimoHoras,
+                int maxDiasLaborablesQuincena
+        ) {
+            this(fechaInicio, diasHorizonte, maxDiasConsecutivos, descansoMinimoHoras,
+                    maxDiasLaborablesQuincena, ModoOptimizacion.MAXIMIZAR_DINERO);
+        }
+
         public static ParametrosOptimizacion porDefecto(LocalDate inicio) {
             return new ParametrosOptimizacion(
                     inicio != null ? inicio : LocalDate.of(2026, 11, 1),
                     15,
                     6,
                     12,
-                    13
+                    13,
+                    ModoOptimizacion.MAXIMIZAR_DINERO
             );
         }
     }
@@ -94,6 +120,7 @@ public class OptimizacionTurnosService {
     public record ResultadoOptimizacion(
             LocalDate fechaInicio,
             LocalDate fechaFin,
+            ModoOptimizacion modoOptimizacion,
             double limiteSemanalHoras,
             int maxDiasConsecutivos,
             int descansoMinimoHoras,
@@ -126,6 +153,7 @@ public class OptimizacionTurnosService {
         double transporte;
         double deducciones;
         double valorNeto;
+        double valorObjetivo;
     }
 
     public ResultadoOptimizacion optimizarQuincena(ConfigNomina cfg, ParametrosOptimizacion params, List<Registro> registrosActuales) {
@@ -135,10 +163,13 @@ public class OptimizacionTurnosService {
         int maxConsec = Math.max(3, Math.min(6, params.maxDiasConsecutivos() > 0 ? params.maxDiasConsecutivos() : 6));
         int minDescansoH = Math.max(8, Math.min(16, params.descansoMinimoHoras() > 0 ? params.descansoMinimoHoras() : 12));
         int maxDiasQuincena = Math.max(6, Math.min(nDias, params.maxDiasLaborablesQuincena() > 0 ? params.maxDiasLaborablesQuincena() : 13));
+        ModoOptimizacion modo = params.modo() != null ? params.modo() : ModoOptimizacion.MAXIMIZAR_DINERO;
 
         PayrollEngine.ConfigEfectiva cfgInicial = payrollEngine.configEfectiva(cfg, fechaInicio);
         double limiteSemanalBase = cfgInicial.es42h() ? 42.0 : 44.0;
         double auxDiario = cfg.getAuxTranspMensual() / 30.0;
+        double valorHoraBase = cfg.getHora() > 0 ? cfg.getHora() : 7959.0;
+        double bonoDescanso = calcularBonoDescanso(valorHoraBase, modo);
 
         int numTurnos = CATALOGO_TURNOS.size();
         EvaluacionCandidato[][] matriz = new EvaluacionCandidato[nDias][numTurnos];
@@ -169,6 +200,7 @@ public class OptimizacionTurnosService {
                 ev.transporte = auxDiario;
                 ev.deducciones = ev.pagoBruto * 0.08; // 4% salud + 4% pensión
                 ev.valorNeto = ev.pagoBruto + ev.transporte - ev.deducciones;
+                ev.valorObjetivo = calcularValorObjetivo(ev, t, valorHoraBase, modo);
                 matriz[d][s] = ev;
             }
         }
@@ -193,9 +225,9 @@ public class OptimizacionTurnosService {
         // Cota superior optimista por día para poda en Branch and Bound
         double[] maxPorDia = new double[nDias];
         for (int d = 0; d < nDias; d++) {
-            double m = 0;
+            double m = bonoDescanso;
             for (int s = 0; s < numTurnos; s++) {
-                if (matriz[d][s].valorNeto > m) m = matriz[d][s].valorNeto;
+                if (matriz[d][s].valorObjetivo > m) m = matriz[d][s].valorObjetivo;
             }
             maxPorDia[d] = m;
         }
@@ -210,14 +242,12 @@ public class OptimizacionTurnosService {
 
         resolverBranchAndBound(
                 0, nDias, numTurnos, matriz, fechas, transicionValida, cotaRestante,
-                maxConsec, maxDiasQuincena, cfg,
+                maxConsec, maxDiasQuincena, bonoDescanso, cfg,
                 0, 0, 0.0, 0.0, 0.0,
                 asignacionActual, estado
         );
 
         List<DiaAsignado> planOptimo = construirPlanDesdeIndices(estado.mejorAsignacion, fechas, esDomFest, matriz);
-
-        // Construir asignación manual de referencia para contrastar el modelo (OE5 / OE6)
         List<DiaAsignado> planManual = construirPlanManualReferencia(
                 nDias, fechas, esDomFest, matriz, registrosActuales, auxDiario, limiteSemanalBase
         );
@@ -247,10 +277,17 @@ public class OptimizacionTurnosService {
 
         long tiempoMs = Math.max(1L, (System.nanoTime() - t0) / 1_000_000L);
 
+        String funcionObjStr = switch (modo) {
+            case MAXIMIZAR_DINERO -> "max Z = sum_{d in D} sum_{s in S} v_{d,s} * x_{d,s}";
+            case EQUILIBRIO -> "max Z = sum_{d in D} sum_{s in S} (v_{d,s} - fatiga_s) * x_{d,s} + bono_descanso * dias_libres";
+            case PRIORIZAR_DESCANSO -> "max Z = sum_{d in D} sum_{s in S} (v_{d,s} - fatiga_alta_s) * x_{d,s} + bono_descanso_alto * dias_libres";
+        };
+
         Map<String, Object> formulacion = new LinkedHashMap<>();
         formulacion.put("tipoModelo", "Programación Lineal Entera Binaria (PLE) - Método Branch and Bound");
+        formulacion.put("modoOptimizacion", modo.getDescripcion());
         formulacion.put("variableDecision", "x_{d,s} in {0, 1}: 1 si el trabajador toma el turno s in S en el día d in D; 0 en caso contrario");
-        formulacion.put("funcionObjetivo", "max Z = sum_{d in D} sum_{s in S} v_{d,s} * x_{d,s}");
+        formulacion.put("funcionObjetivo", funcionObjStr);
         formulacion.put("numVariablesBinarias", nDias * numTurnos);
         formulacion.put("restricciones", List.of(
                 "R1 (Asignación única diaria): sum_{s in S} x_{d,s} <= 1  para todo d in D",
@@ -262,6 +299,7 @@ public class OptimizacionTurnosService {
         return new ResultadoOptimizacion(
                 fechaInicio,
                 fechaInicio.plusDays(nDias - 1),
+                modo,
                 limiteSemanalBase,
                 maxConsec,
                 minDescansoH,
@@ -285,6 +323,26 @@ public class OptimizacionTurnosService {
         );
     }
 
+    private double calcularBonoDescanso(double valorHoraBase, ModoOptimizacion modo) {
+        return switch (modo) {
+            case MAXIMIZAR_DINERO -> 0.0;
+            case EQUILIBRIO -> valorHoraBase * 2.0;
+            case PRIORIZAR_DESCANSO -> valorHoraBase * 5.0;
+        };
+    }
+
+    private double calcularValorObjetivo(EvaluacionCandidato ev, CatalogoTurno t, double valorHoraBase, ModoOptimizacion modo) {
+        if (modo == ModoOptimizacion.MAXIMIZAR_DINERO) {
+            return ev.valorNeto;
+        }
+        double horasExtendidas = Math.max(0.0, t.horasTotales() - 8.0);
+        double factorExt = (modo == ModoOptimizacion.EQUILIBRIO) ? 4.0 : 5.0;
+        double factorNoc = (modo == ModoOptimizacion.EQUILIBRIO) ? 0.65 : 1.0;
+        double penalizacionFatiga = (horasExtendidas * valorHoraBase * factorExt)
+                + (t.horasNocturnas() * valorHoraBase * factorNoc);
+        return Math.max(0.0, ev.valorNeto - penalizacionFatiga);
+    }
+
     private static class EstadoBnB {
         double mejorValor = -1.0;
         int[] mejorAsignacion;
@@ -304,6 +362,7 @@ public class OptimizacionTurnosService {
             double[] cotaRestante,
             int maxConsecutivos,
             int maxDiasQuincena,
+            double bonoDescanso,
             ConfigNomina cfg,
             int diasConsecutivosActual,
             int diasTrabajadosTotal,
@@ -326,8 +385,9 @@ public class OptimizacionTurnosService {
         // Poda por cota superior (Bounding)
         int diasRestantesPermitidos = Math.min(nDias - dia, maxDiasQuincena - diasTrabajadosTotal);
         if (diasRestantesPermitidos <= 0) {
-            if (valorAcumulado > estado.mejorValor) {
-                estado.mejorValor = valorAcumulado;
+            double valorConDescansosRestantes = valorAcumulado + ((nDias - dia) * bonoDescanso);
+            if (valorConDescansosRestantes > estado.mejorValor) {
+                estado.mejorValor = valorConDescansosRestantes;
                 int[] copia = Arrays.copyOf(asignacionActual, nDias);
                 for (int k = dia; k < nDias; k++) copia[k] = -1;
                 estado.mejorAsignacion = copia;
@@ -343,11 +403,11 @@ public class OptimizacionTurnosService {
         double extSem = (dia % 7 == 0) ? 0.0 : horasExtSemanaActual;
         double limiteSemanal = payrollEngine.configEfectiva(cfg, fechas[dia]).es42h() ? 42.0 : 44.0;
 
-        // Ordenar candidatos del día de mayor a menor aporte neto para acelerar poda
+        // Ordenar candidatos del día de mayor a menor valor objetivo para acelerar poda
         Integer[] ordenTurnos = new Integer[numTurnos];
         for (int i = 0; i < numTurnos; i++) ordenTurnos[i] = i;
         final int dIdx = dia;
-        Arrays.sort(ordenTurnos, (a, b) -> Double.compare(matriz[dIdx][b].valorNeto, matriz[dIdx][a].valorNeto));
+        Arrays.sort(ordenTurnos, (a, b) -> Double.compare(matriz[dIdx][b].valorObjetivo, matriz[dIdx][a].valorObjetivo));
 
         // Ramificar sobre turnos activos s in S si no supera el máximo de días consecutivos (R4)
         if (diasConsecutivosActual < maxConsecutivos && diasTrabajadosTotal < maxDiasQuincena) {
@@ -374,12 +434,12 @@ public class OptimizacionTurnosService {
                 asignacionActual[dia] = s;
                 resolverBranchAndBound(
                         dia + 1, nDias, numTurnos, matriz, fechas, transicionValida, cotaRestante,
-                        maxConsecutivos, maxDiasQuincena, cfg,
+                        maxConsecutivos, maxDiasQuincena, bonoDescanso, cfg,
                         diasConsecutivosActual + 1,
                         diasTrabajadosTotal + 1,
                         ordSem + ev.horasOrd,
                         extSem + ev.horasExt,
-                        valorAcumulado + ev.valorNeto,
+                        valorAcumulado + ev.valorObjetivo,
                         asignacionActual, estado
                 );
                 asignacionActual[dia] = -1;
@@ -390,12 +450,12 @@ public class OptimizacionTurnosService {
         asignacionActual[dia] = -1;
         resolverBranchAndBound(
                 dia + 1, nDias, numTurnos, matriz, fechas, transicionValida, cotaRestante,
-                maxConsecutivos, maxDiasQuincena, cfg,
+                maxConsecutivos, maxDiasQuincena, bonoDescanso, cfg,
                 0,
                 diasTrabajadosTotal,
                 ordSem,
                 extSem,
-                valorAcumulado,
+                valorAcumulado + bonoDescanso,
                 asignacionActual, estado
         );
     }
@@ -428,9 +488,7 @@ public class OptimizacionTurnosService {
     }
 
     /**
-     * Construye la línea base de asignación manual (6 días de turno diurno estándar de 8h
-     * y descanso en domingo/séptimo día, o los registros reales si el usuario ya tiene
-     * la quincena registrada) para contrastar la ganancia del modelo PLE.
+     * Línea base de referencia (turnos diurnos de 8h de lunes a sábado y descanso dominical).
      */
     private List<DiaAsignado> construirPlanManualReferencia(
             int nDias, LocalDate[] fechas, boolean[] esDomFest,
@@ -443,8 +501,6 @@ public class OptimizacionTurnosService {
 
         for (int d = 0; d < nDias; d++) {
             if (d % 7 == 0) ordSem = 0.0;
-            // En una asignación manual tradicional sin optimización, el trabajador suele
-            // tomar turnos diurnos de 8h (índice 0) de lunes a sábado y descansar el domingo
             boolean descansa = esDomFest[d] || consec >= 6 || (ordSem + 8.0 > limiteSemanal);
             if (descansa) {
                 consec = 0;

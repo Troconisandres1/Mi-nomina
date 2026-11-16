@@ -11,25 +11,15 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/**
- * Prueba de la capa Service (lógica de negocio pura, sin levantar el
- * contexto de Spring — más rápida y no depende de base de datos).
- * Cubre el caso más simple del motor de nómina: un turno ordinario diurno,
- * un día hábil cualquiera, sin extras ni recargos.
- */
 class PayrollEngineTest {
 
-    // 5 de enero de 2026 es lunes, no está en la lista de festivos, y es
-    // anterior a los cortes legales de julio de 2026 (tarifas base vigentes:
-    // hora ordinaria $7.959, jornada de 44h semanales).
+    // Lunes hábil previo al corte de julio de 2026 (tarifa base $7.959/h, jornada 44h/sem)
     private static final LocalDate LUNES_NO_FESTIVO = LocalDate.of(2026, 1, 5);
 
     private final PayrollEngine engine = new PayrollEngine(new FestivosService());
 
     @Test
     void confirmaQueLaFechaDePruebaEsUnLunes() {
-        // Salvaguarda: si esta aserción falla, el resto del test pierde sentido
-        // (dejaría de ser un turno "ordinario" simple).
         assertEquals(DayOfWeek.MONDAY, LUNES_NO_FESTIVO.getDayOfWeek());
     }
 

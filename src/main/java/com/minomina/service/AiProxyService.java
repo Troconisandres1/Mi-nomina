@@ -26,7 +26,6 @@ public class AiProxyService {
 
     private final RestTemplate restTemplate = new RestTemplate();
 
-    // Lista cruda desde application.yml (GEMINI_API_KEYS, separadas por coma).
     @Value("${app.ai.gemini-api-keys}")
     private String apiKeysRaw;
 
@@ -35,9 +34,7 @@ public class AiProxyService {
 
     private List<String> apiKeys;
 
-    // Índice de la última clave que funcionó bien. Los siguientes intentos
-    // arrancan desde aquí en vez de siempre desde la clave 0, para no
-    // reintentar constantemente una clave que ya sabemos que está agotada.
+    // Índice actual de rotación de API keys
     private final AtomicInteger indiceActual = new AtomicInteger(0);
 
     @PostConstruct
@@ -78,9 +75,7 @@ public class AiProxyService {
         int total = apiKeys.size();
         String ultimoError = null;
 
-        // Prueba cada clave empezando por la última que funcionó, dando la
-        // vuelta si hace falta. En cuanto una responde bien, se corta el loop
-        // y esa queda como punto de partida para la próxima pregunta.
+        // Rotación circular de claves ante fallos de cuota o disponibilidad
         for (int intento = 0; intento < total; intento++) {
             int idx = Math.floorMod(indiceActual.get() + intento, total);
             String key = apiKeys.get(idx);
@@ -99,11 +94,8 @@ public class AiProxyService {
 
                 if (esErrorReintentableConOtraClave(e.getStatusCode())) {
                     ultimoError = "Gemini devolvió " + e.getStatusCode().value() + ": " + resumirError(cuerpo);
-                    continue; // probar la siguiente clave
+                    continue;
                 }
-                // Error que NO se arregla cambiando de clave (ej. modelo no
-                // existe, petición mal formada): no tiene sentido rotar, se
-                // reporta de una vez.
                 log.error("Gemini respondió {} (no reintentable con otra clave) al llamar a {} — cuerpo: {}",
                         e.getStatusCode(), geminiUrl, cuerpo);
                 throw new IllegalStateException("Gemini devolvió " + e.getStatusCode().value() + ": " + resumirError(cuerpo));
@@ -113,7 +105,6 @@ public class AiProxyService {
             }
         }
 
-        // Se agotaron TODAS las claves configuradas: respaldar con análisis local del contexto.
         log.warn("Las {} clave(s) de Gemini fallaron ({}). Usando análisis contextual de respaldo.", total, ultimoError);
         return generarRespuestaContextualLocal(contexto, mensajeUsuario);
     }
@@ -163,24 +154,9 @@ public class AiProxyService {
                 + "\n\n*También puedes pedirme que ejecute una herramienta `@Tool` de cálculo escribiendo por ejemplo: \"Calcula el recargo de un turno dominical de 8 horas\" o \"Verifica el tope semanal para 46 horas\".*";
     }
 
-    /**
-     * 429 = cuota/rate limit agotado, 403 = a veces también es cuota/permiso
-     * de ESA clave específica, 500/503 = error transitorio del lado de
-     * Google. En estos casos vale la pena probar con otra clave.
-     * 400/404 (modelo mal escrito, request mal formado) NO se arreglan
-     * cambiando de clave, así que ahí no tiene sentido rotar.
-     *
-     * Recibe HttpStatusCode (la interfaz), no HttpStatus (el enum): desde
-     * Spring Framework 6, HttpStatusCodeException.getStatusCode() devuelve
-     * HttpStatusCode, y comparar por número de código evita el error de
-     * compilación "incompatible types".
-     */
     private boolean esErrorReintentableConOtraClave(HttpStatusCode status) {
         int codigo = status.value();
-        return codigo == 429 // Too Many Requests
-                || codigo == 403 // Forbidden
-                || codigo == 500 // Internal Server Error
-                || codigo == 503; // Service Unavailable
+        return codigo == 429 || codigo == 403 || codigo == 500 || codigo == 503;
     }
 
     @SuppressWarnings("unchecked")

@@ -101,7 +101,7 @@ public class ChatClient {
         Map<String, ToolMethodRef> registeredTools = discoverTools(tools);
 
         if (!esPreguntaConceptualSinTool(norm)) {
-            // Tool 3 (Actividad 1 en Mi Nómina): calcularQuincenaPonderada (salarioBase, horasOrdinarias, horasNocturnas, horasDominicales)
+            // Tool: calcularQuincenaPonderada
             if (registeredTools.containsKey("calcularQuincenaPonderada")
                     && (norm.contains("quincena ponderada") || norm.contains("pago neto quincenal") || (norm.contains("ordinarias") && norm.contains("nocturnas") && norm.contains("dominicales")))) {
                 List<Double> nums = extractNumbers(cleanMsg);
@@ -115,7 +115,7 @@ public class ChatClient {
                 }
             }
 
-            // Tool 4 (Actividad 2 en Mi Nómina): estadoAuxilioYCumplimiento (salarioBase, porcentajeCumplimientoTurnos)
+            // Tool: estadoAuxilioYCumplimiento
             if (registeredTools.containsKey("estadoAuxilioYCumplimiento")
                     && (norm.contains("auxilio de transporte") || norm.contains("cumplimiento de turnos") || norm.contains("asistencia en turnos") || norm.contains("bonificacion"))) {
                 List<Double> nums = extractNumbers(cleanMsg);
@@ -130,7 +130,7 @@ public class ChatClient {
                 }
             }
 
-            // Tool 2: verificarTopeJornadaSemanal (horasSemanales / limites de horas extras)
+            // Tool: verificarTopeJornadaSemanal
             if (registeredTools.containsKey("verificarTopeJornadaSemanal")
                     && (norm.contains("tope") || norm.contains("jornada semanal") || norm.contains("horas semanales")
                     || norm.contains("cuantos dias") || norm.contains("cuantas horas extra")
@@ -156,7 +156,7 @@ public class ChatClient {
                         horasSem, result);
             }
 
-            // Tool 1: calcularLiquidacionTurno (salarioBase, horas, tipoTurno)
+            // Tool: calcularLiquidacionTurno
             if (registeredTools.containsKey("calcularLiquidacionTurno")
                     && (norm.contains("calcula") || norm.contains("cuanto vale") || norm.contains("cuanto me pagan")
                     || norm.contains("recargo") || norm.contains("liquidar") || norm.contains("liquidacion")

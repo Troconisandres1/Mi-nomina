@@ -1,56 +1,48 @@
-### ============================================================================
-### TALLER PRÁCTICO: Implementación de Tool Calling con Spring AI en Mi Nómina
-### Asignatura: Desarrollo Web Avanzado (Ing. Fabio García)
-### Proyecto: Plataforma Mi Nómina (HerramientasNomina.java con @Tool)
-### ============================================================================
+### Pruebas de endpoints /api/chat (Tool Calling)
 
-### Prueba 1 - Liquidar turno dominical (Herramienta: calcularLiquidacionTurno)
+### 1. Liquidar turno dominical (calcularLiquidacionTurno)
 POST http://localhost:8080/api/chat
 Content-Type: text/plain
 
 Con un salario base de 2000000, calcula el recargo de un turno dominical de 8 horas.
 
-### Prueba 2 - Liquidar horas extras nocturnas (Herramienta: calcularLiquidacionTurno)
+### 2. Liquidar horas extras nocturnas (calcularLiquidacionTurno)
 POST http://localhost:8080/api/chat
 Content-Type: text/plain
 
 Tengo un salario base de 2500000 y trabajé 4 horas extra nocturna. Calcula la liquidación del turno.
 
-### Prueba 3 - Selección de otra herramienta (Herramienta: verificarTopeJornadaSemanal)
+### 3. Verificar tope de jornada semanal (verificarTopeJornadaSemanal)
 POST http://localhost:8080/api/chat
 Content-Type: text/plain
 
 Un trabajador acumuló 46 horas semanales. Verifica el tope de la jornada semanal.
 
-### Prueba 4 - Pregunta que no requiere Tool (Sin ejecución de @Tool)
+### 4. Consulta normativa general
 POST http://localhost:8080/api/chat
 Content-Type: text/plain
 
 Explícame qué significa el recargo nocturno y la jornada máxima bajo la Ley 2101 de 2021.
 
-### ============================================================================
-### EXTENSIÓN DE HERRAMIENTAS DE NÓMINA (Actividades 1, 2, 3 y 4 en Mi Nómina)
-### ============================================================================
-
-### Actividad 1 - Nueva herramienta ponderada: calcularQuincenaPonderada (Salario + 3 tipos de horas)
+### 5. Liquidación quincenal ponderada (calcularQuincenaPonderada)
 POST http://localhost:8080/api/chat
 Content-Type: text/plain
 
 Calcula el pago neto quincenal ponderado con salario base de 2000000 para 60 horas ordinarias, 20 horas nocturnas y 16 horas dominicales.
 
-### Actividad 2 - Herramienta de asistencia/cumplimiento en turnos: estadoAuxilioYCumplimiento
+### 6. Estado de auxilio de transporte y bonificación (estadoAuxilioYCumplimiento)
 POST http://localhost:8080/api/chat
 Content-Type: text/plain
 
 Un trabajador tiene salario de 1800000 y un cumplimiento de turnos de 92%. ¿Cuál es su estado de auxilio de transporte y bonificación?
 
-### Actividad 3 - Prueba de selección adicional (Incumplimiento de asistencia en turnos < 85%)
+### 7. Verificación de incumplimiento de asistencia (< 85%)
 POST http://localhost:8080/api/chat
 Content-Type: text/plain
 
 Un trabajador con salario de 3200000 tuvo una asistencia en turnos de 75%. Verifica su auxilio de transporte y bonificación.
 
-### Actividad 4 - Pregunta adicional sin Tool (Conceptual sobre Tool Calling en Mi Nómina)
+### 8. Consulta sobre arquitectura de herramientas
 POST http://localhost:8080/api/chat
 Content-Type: text/plain
 

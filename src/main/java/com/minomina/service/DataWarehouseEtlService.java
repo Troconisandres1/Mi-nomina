@@ -11,14 +11,7 @@ import java.time.temporal.WeekFields;
 import java.util.*;
 
 /**
- * Servicio ETL y Modelo Dimensional (Esquema en Estrella - Kimball & Ross)
- * para Visualización de Datos II (Power BI).
- *
- * Extrae datos transaccionales (Usuario, ConfigNomina, Registro, Historial),
- * aplica transformación (anonimización SHA-256 conforme a la Ley 1581 de 2012,
- * clasificación de horas, cálculo de KPIs) y estructura las tablas de dimensión
- * (Dim_Fecha, Dim_Usuario, Dim_TipoDia, Dim_TipoHora, Dim_Quincena) y la tabla
- * de hechos (Hecho_Turno).
+ * Servicio ETL y modelo dimensional en estrella (Hecho_Turno y dimensiones).
  */
 @Service
 public class DataWarehouseEtlService {
@@ -231,7 +224,7 @@ public class DataWarehouseEtlService {
             }
         }
 
-        // 3. Calcular KPIs analíticos definidos en la metodología (VD II)
+        // 3. Cálculo de KPIs analíticos
         int diasReg = registrosActuales.size();
         double netoActual = resActual.neto();
         double ingresoPromDia = diasReg > 0 ? netoActual / diasReg : 0.0;

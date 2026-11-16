@@ -3716,7 +3716,7 @@
       </div>
     </div>
 
-    <!-- ═══ OPTIMIZADOR DE TURNOS — INVESTIGACIÓN DE OPERACIONES (PLE) ═══ -->
+    <!-- ═══ OPTIMIZADOR DE TURNOS (PLE) ═══ -->
     <div id="optimizador" class="tab-content hidden">
       <div class="card" style="margin-bottom:1.5rem;">
         <div style="font-size:.68rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);margin-bottom:.25rem;">
@@ -3731,7 +3731,7 @@
         <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:1rem;margin-bottom:1.25rem;font-size:.8rem;line-height:1.65;">
           <div style="font-weight:700;color:var(--accent);margin-bottom:.35rem;text-transform:uppercase;font-size:.7rem;letter-spacing:.08em;">
             Modelo Matemático Implementado (Ramificación y Acotamiento — Branch &amp; Bound)</div>
-          <div style="font-family:var(--font-mono);font-size:.78rem;color:var(--text);margin-bottom:.5rem;">
+          <div id="optFormulaObj" style="font-family:var(--font-mono);font-size:.78rem;color:var(--text);margin-bottom:.5rem;">
             Maximizar Z = &Sigma;<sub>d &isin; D</sub> &Sigma;<sub>s &isin; S</sub> v<sub>d,s</sub> &middot; x<sub>d,s</sub> &nbsp;&nbsp; con x<sub>d,s</sub> &isin; {0, 1}
           </div>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:.5rem;color:var(--muted);font-size:.76rem;">
@@ -3744,6 +3744,14 @@
 
         <!-- Parámetros del modelo -->
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.85rem;margin-bottom:1.25rem;">
+          <div>
+            <label style="display:block;font-size:.72rem;font-weight:600;color:var(--muted);margin-bottom:.35rem;">Objetivo de Optimización</label>
+            <select id="optModo" class="input" onchange="ejecutarOptimizacionTurnos()" style="width:100%;padding:.55rem .75rem;">
+              <option value="MAXIMIZAR_DINERO">Maximizar dinero (ingreso neto)</option>
+              <option value="EQUILIBRIO">Equilibrio dinero y descanso (turnos no pesados)</option>
+              <option value="PRIORIZAR_DESCANSO">Priorizar descanso (turnos ligeros)</option>
+            </select>
+          </div>
           <div>
             <label style="display:block;font-size:.72rem;font-weight:600;color:var(--muted);margin-bottom:.35rem;">Fecha Inicio Quincena</label>
             <input type="date" id="optFechaInicio" class="input" value="2026-11-01" style="width:100%;padding:.55rem .75rem;">
@@ -6962,7 +6970,7 @@ REGLAS:
     })();
   </script>
 
-  <!-- ── Módulos Interdisciplinarios: Data Warehouse / Power BI (VD II) y Optimizador PLE (IO) ── -->
+  <!-- ── Módulos Analíticos: Data Warehouse / Power BI y Optimizador PLE ── -->
   <script>
     window._ultimoDwPayload = null;
     window._pbiPaginaActual = 1;
@@ -7525,7 +7533,7 @@ REGLAS:
       URL.revokeObjectURL(url);
     }
 
-    // ── Optimizador de Turnos (Investigación de Operaciones - PLE) ──
+    // ── Optimizador de Turnos (PLE) ──
     let _optInicializado = false;
     function inicializarOptimizador() {
       if (_optInicializado) return;
@@ -7542,6 +7550,18 @@ REGLAS:
       const maxDiasConsecutivos = parseInt((document.getElementById('optMaxConsec') || {}).value || '6', 10);
       const descansoMinimoHoras = parseInt((document.getElementById('optDescansoMin') || {}).value || '12', 10);
       const maxDiasLaborablesQuincena = parseInt((document.getElementById('optMaxDiasQ') || {}).value || '13', 10);
+      const modo = (document.getElementById('optModo') || {}).value || 'MAXIMIZAR_DINERO';
+
+      const formulaEl = document.getElementById('optFormulaObj');
+      if (formulaEl) {
+        if (modo === 'EQUILIBRIO') {
+          formulaEl.innerHTML = 'Maximizar Z = &Sigma;<sub>d &isin; D</sub> &Sigma;<sub>s &isin; S</sub> (v<sub>d,s</sub> &minus; fatiga<sub>s</sub>) &middot; x<sub>d,s</sub> + bono<sub>descanso</sub> &middot; d&iacute;as<sub>libres</sub>';
+        } else if (modo === 'PRIORIZAR_DESCANSO') {
+          formulaEl.innerHTML = 'Maximizar Z = &Sigma;<sub>d &isin; D</sub> &Sigma;<sub>s &isin; S</sub> (v<sub>d,s</sub> &minus; fatiga_alta<sub>s</sub>) &middot; x<sub>d,s</sub> + bono_alto<sub>descanso</sub> &middot; d&iacute;as<sub>libres</sub>';
+        } else {
+          formulaEl.innerHTML = 'Maximizar Z = &Sigma;<sub>d &isin; D</sub> &Sigma;<sub>s &isin; S</sub> v<sub>d,s</sub> &middot; x<sub>d,s</sub> &nbsp;&nbsp; con x<sub>d,s</sub> &isin; {0, 1}';
+        }
+      }
 
       try {
         const res = await fetch(`${API_BASE}/optimizacion/turnos`, {
@@ -7552,7 +7572,8 @@ REGLAS:
             diasHorizonte: 15,
             maxDiasConsecutivos,
             descansoMinimoHoras,
-            maxDiasLaborablesQuincena
+            maxDiasLaborablesQuincena,
+            modo
           })
         });
         if (!res.ok) throw new Error('Error HTTP ' + res.status);
