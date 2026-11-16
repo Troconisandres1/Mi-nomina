@@ -36,33 +36,33 @@ public class OptimizacionTurnosService {
     ) {}
 
     public static final List<CatalogoTurno> CATALOGO_TURNOS = List.of(
-            new CatalogoTurno("DIURNO_8H", "Diurno Mañana (06:00 - 14:30)",
-                    LocalTime.of(6, 0), LocalTime.of(14, 30),
-                    LocalTime.of(12, 0), LocalTime.of(12, 30), 8.0, 0.0),
-            new CatalogoTurno("CENTRAL_8H", "Diurno Central (08:00 - 16:30)",
-                    LocalTime.of(8, 0), LocalTime.of(16, 30),
-                    LocalTime.of(12, 30), LocalTime.of(13, 0), 8.0, 0.0),
-            new CatalogoTurno("TARDE_8H", "Tarde Estándar (12:00 - 20:30)",
-                    LocalTime.of(12, 0), LocalTime.of(20, 30),
-                    LocalTime.of(16, 0), LocalTime.of(16, 30), 8.0, 1.5),
-            new CatalogoTurno("MIXTO_8H", "Mixto Tarde-Noche (14:00 - 22:30)",
-                    LocalTime.of(14, 0), LocalTime.of(22, 30),
-                    LocalTime.of(18, 0), LocalTime.of(18, 30), 8.0, 3.5),
-            new CatalogoTurno("NOCTURNO_20_8H", "Nocturno Temprano (20:00 - 04:30)",
-                    LocalTime.of(20, 0), LocalTime.of(4, 30),
-                    LocalTime.of(0, 0), LocalTime.of(0, 30), 8.0, 8.0),
-            new CatalogoTurno("NOCTURNO_8H", "Nocturno Completo (22:00 - 06:30)",
-                    LocalTime.of(22, 0), LocalTime.of(6, 30),
-                    LocalTime.of(2, 0), LocalTime.of(2, 30), 8.0, 7.5),
-            new CatalogoTurno("EXTENDIDO_10H", "Diurno Extendido 10h (08:00 - 19:00)",
-                    LocalTime.of(8, 0), LocalTime.of(19, 0),
-                    LocalTime.of(13, 0), LocalTime.of(14, 0), 10.0, 0.0),
-            new CatalogoTurno("TARDE_10H", "Tarde Extendido 10h (12:00 - 23:00)",
-                    LocalTime.of(12, 0), LocalTime.of(23, 0),
-                    LocalTime.of(17, 0), LocalTime.of(18, 0), 10.0, 4.0),
-            new CatalogoTurno("NOCTURNO_10H", "Nocturno Extendido 10h (20:00 - 06:30)",
-                    LocalTime.of(20, 0), LocalTime.of(6, 30),
-                    LocalTime.of(1, 0), LocalTime.of(1, 30), 10.0, 9.5)
+            new CatalogoTurno("DIURNO_8H", "Diurno Mañana (06:00 - 14:00)",
+                    LocalTime.of(6, 0), LocalTime.of(14, 0),
+                    LocalTime.of(12, 0), LocalTime.of(13, 0), 7.0, 0.0),
+            new CatalogoTurno("CENTRAL_8H", "Diurno Central (08:00 - 16:00)",
+                    LocalTime.of(8, 0), LocalTime.of(16, 0),
+                    LocalTime.of(12, 0), LocalTime.of(13, 0), 7.0, 0.0),
+            new CatalogoTurno("TARDE_8H", "Tarde Estándar (12:00 - 20:00)",
+                    LocalTime.of(12, 0), LocalTime.of(20, 0),
+                    LocalTime.of(16, 0), LocalTime.of(17, 0), 7.0, 1.0),
+            new CatalogoTurno("MIXTO_8H", "Mixto Tarde-Noche (14:00 - 22:00)",
+                    LocalTime.of(14, 0), LocalTime.of(22, 0),
+                    LocalTime.of(18, 0), LocalTime.of(19, 0), 7.0, 3.0),
+            new CatalogoTurno("NOCTURNO_20_8H", "Nocturno Temprano (20:00 - 04:00)",
+                    LocalTime.of(20, 0), LocalTime.of(4, 0),
+                    LocalTime.of(0, 0), LocalTime.of(1, 0), 7.0, 7.0),
+            new CatalogoTurno("NOCTURNO_8H", "Nocturno Completo (22:00 - 06:00)",
+                    LocalTime.of(22, 0), LocalTime.of(6, 0),
+                    LocalTime.of(2, 0), LocalTime.of(3, 0), 7.0, 7.0),
+            new CatalogoTurno("EXTENDIDO_10H", "Diurno Extendido 10h (08:00 - 18:00)",
+                    LocalTime.of(8, 0), LocalTime.of(18, 0),
+                    LocalTime.of(13, 0), LocalTime.of(14, 0), 9.0, 0.0),
+            new CatalogoTurno("TARDE_10H", "Tarde Extendido 10h (12:00 - 22:00)",
+                    LocalTime.of(12, 0), LocalTime.of(22, 0),
+                    LocalTime.of(17, 0), LocalTime.of(18, 0), 9.0, 3.0),
+            new CatalogoTurno("NOCTURNO_10H", "Nocturno Extendido 10h (20:00 - 06:00)",
+                    LocalTime.of(20, 0), LocalTime.of(6, 0),
+                    LocalTime.of(1, 0), LocalTime.of(2, 0), 9.0, 9.0)
     );
 
     public enum ModoOptimizacion {
@@ -412,21 +412,21 @@ public class OptimizacionTurnosService {
         }
         try {
             LocalTime inicio = LocalTime.parse(horaInicioTurno.trim());
-            LocalTime fin8h = inicio.plusHours(8).plusMinutes(30);
+            LocalTime fin8h = inicio.plusHours(8);
             LocalTime descIni8h = inicio.plusHours(4);
-            LocalTime descFin8h = descIni8h.plusMinutes(30);
+            LocalTime descFin8h = descIni8h.plusHours(1);
 
-            LocalTime fin10h = inicio.plusHours(11);
+            LocalTime fin10h = inicio.plusHours(10);
             LocalTime descIni10h = inicio.plusHours(5);
             LocalTime descFin10h = descIni10h.plusHours(1);
 
             return List.of(
                     new CatalogoTurno("PERSONALIZADO_8H",
                             String.format("Turno 8h (%s - %s)", inicio, fin8h),
-                            inicio, fin8h, descIni8h, descFin8h, 8.0, 0.0),
+                            inicio, fin8h, descIni8h, descFin8h, 7.0, 0.0),
                     new CatalogoTurno("PERSONALIZADO_10H",
                             String.format("Turno Extendido 10h (%s - %s)", inicio, fin10h),
-                            inicio, fin10h, descIni10h, descFin10h, 10.0, 0.0)
+                            inicio, fin10h, descIni10h, descFin10h, 9.0, 0.0)
             );
         } catch (Exception e) {
             return CATALOGO_TURNOS;
@@ -454,14 +454,14 @@ public class OptimizacionTurnosService {
             double rotacionTieBreak = ((dia + sIdx) % 3) * 15.0;
             return ev.valorNeto + rotacionTieBreak;
         }
-        if (t.horasTotales() > 8.0) {
+        if (t.horasTotales() > 7.0) {
             return -1.0;
         }
         if (tieneHoraFija) {
             return ev.valorNeto;
         }
         if (franja == FranjaHoraria.MIXTA || franja == FranjaHoraria.NOCTURNA) {
-            double baseUniforme = valorHoraBase * 8.0;
+            double baseUniforme = valorHoraBase * 7.0;
             double bonoRotacion = ((dia + sIdx) % 2 == 0) ? 500.0 : 0.0;
             return baseUniforme + bonoRotacion;
         }
@@ -555,7 +555,7 @@ public class OptimizacionTurnosService {
                     continue;
                 }
 
-                boolean es10h = ev.turno.horasTotales() > 8.0;
+                boolean es10h = ev.turno.horasTotales() > 7.0;
                 if (es10h && evaluados10h >= 1) continue;
                 if (!es10h && evaluados8h >= 2) continue;
 
@@ -614,7 +614,7 @@ public class OptimizacionTurnosService {
                 ));
             } else {
                 EvaluacionCandidato ev = matriz[d][s];
-                String horario = ev.turno.horaInicio() + " - " + ev.turno.horaFin();
+                String horario = ev.turno.horaInicio() + " - " + ev.turno.horaFin() + " (-1h desc.)";
                 plan.add(new DiaAsignado(
                         d + 1, fechas[d], esDomFest[d], false,
                         ev.turno.codigo(), ev.turno.nombre(), horario,
@@ -628,7 +628,7 @@ public class OptimizacionTurnosService {
     }
 
     /**
-     * Línea base de referencia (turnos diurnos de 8h de lunes a sábado y descanso dominical).
+     * Línea base de referencia (turnos diurnos de 8h de lunes a sábado con 1h de descanso no pago y descanso dominical).
      */
     private List<DiaAsignado> construirPlanManualReferencia(
             int nDias, LocalDate[] fechas, boolean[] esDomFest,
@@ -641,7 +641,8 @@ public class OptimizacionTurnosService {
 
         for (int d = 0; d < nDias; d++) {
             if (d % 7 == 0) ordSem = 0.0;
-            boolean descansa = esDomFest[d] || consec >= 6 || (ordSem + 8.0 > limiteSemanal);
+            EvaluacionCandidato ev = matriz[d][0];
+            boolean descansa = esDomFest[d] || consec >= 6 || (ordSem + ev.horasOrd > limiteSemanal + 1e-6);
             if (descansa) {
                 consec = 0;
                 manual.add(new DiaAsignado(
@@ -651,9 +652,8 @@ public class OptimizacionTurnosService {
                 ));
             } else {
                 consec++;
-                EvaluacionCandidato ev = matriz[d][0]; // DIURNO_8H
                 ordSem += ev.horasOrd;
-                String horario = ev.turno.horaInicio() + " - " + ev.turno.horaFin();
+                String horario = ev.turno.horaInicio() + " - " + ev.turno.horaFin() + " (-1h desc.)";
                 manual.add(new DiaAsignado(
                         d + 1, fechas[d], esDomFest[d], false,
                         ev.turno.codigo(), ev.turno.nombre(), horario,
