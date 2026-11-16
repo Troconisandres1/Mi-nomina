@@ -89,6 +89,27 @@ class OptimizacionYDwTest {
 
         assertEquals(0.0, resDesc.totalHorasNocturnasOptimo(), 0.01,
                 "Franja diurna no debe asignar horas nocturnas");
+
+        var paramsMixtaEq = new ParametrosOptimizacion(
+                inicio, 15, 6, 12, 13, 2,
+                OptimizacionTurnosService.ModoOptimizacion.EQUILIBRIO,
+                OptimizacionTurnosService.FranjaHoraria.MIXTA);
+        ResultadoOptimizacion resMixta = optimizacionService.optimizarQuincena(cfg, paramsMixtaEq, Collections.emptyList());
+        assertTrue(resMixta.planOptimo().stream()
+                .filter(d -> !d.descansa())
+                .allMatch(d -> d.horario().startsWith("12:00") || d.horario().startsWith("14:00")),
+                "Franja mixta desde las 12:00 solo debe asignar turnos de 12:00 o 14:00");
+
+        var paramsHoraFija = new ParametrosOptimizacion(
+                inicio, 15, 6, 12, 13, 2,
+                OptimizacionTurnosService.ModoOptimizacion.EQUILIBRIO,
+                OptimizacionTurnosService.FranjaHoraria.TODAS,
+                "13:30");
+        ResultadoOptimizacion resHoraFija = optimizacionService.optimizarQuincena(cfg, paramsHoraFija, Collections.emptyList());
+        assertTrue(resHoraFija.planOptimo().stream()
+                .filter(d -> !d.descansa())
+                .allMatch(d -> d.horario().startsWith("13:30")),
+                "Hora de inicio personalizada debe respetarse en todos los turnos asignados");
     }
 
     @Test

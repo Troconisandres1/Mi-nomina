@@ -3743,7 +3743,7 @@
         </div>
 
         <!-- Parámetros del modelo -->
-        <div class="reg-pill-row" style="grid-template-columns:repeat(auto-fit,minmax(210px,1fr));margin-bottom:.85rem;">
+        <div class="reg-pill-row" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr));margin-bottom:.85rem;">
           <div class="reg-field-wrap">
             <label class="reg-label">Objetivo de Optimización</label>
             <select id="optModo" class="inp reg-inp" onchange="alCambiarModoOptimizador()" style="width:100%;">
@@ -3754,12 +3754,16 @@
           </div>
           <div class="reg-field-wrap">
             <label class="reg-label">Franja Horaria</label>
-            <select id="optFranja" class="inp reg-inp" onchange="ejecutarOptimizacionTurnos()" style="width:100%;">
+            <select id="optFranja" class="inp reg-inp" onchange="alCambiarFranjaOptimizador()" style="width:100%;">
               <option value="TODAS">Todas las franjas (rotativo)</option>
-              <option value="DIURNA">Diurna / Mañana (06:00 - 19:00)</option>
-              <option value="MIXTA">Tarde / Mixta (12:00 - 22:30)</option>
-              <option value="NOCTURNA">Nocturna (20:00 - 06:30)</option>
+              <option value="DIURNA">Diurna / Mañana (06:00 - 16:30)</option>
+              <option value="MIXTA">Tarde / Mixta (desde las 12:00)</option>
+              <option value="NOCTURNA">Nocturna (desde las 20:00)</option>
             </select>
+          </div>
+          <div class="reg-field-wrap">
+            <label class="reg-label">Hora de Inicio de Turnos (Opcional)</label>
+            <input type="time" id="optHoraInicio" class="inp reg-inp" onchange="ejecutarOptimizacionTurnos()" title="Elige una hora fija de entrada o déjalo vacío para rotar dentro de la franja">
           </div>
           <div class="reg-field-wrap">
             <label class="reg-label">Fecha Inicio Quincena</label>
@@ -7566,6 +7570,12 @@ REGLAS:
       ejecutarOptimizacionTurnos();
     }
 
+    function alCambiarFranjaOptimizador() {
+      const horaEl = document.getElementById('optHoraInicio');
+      if (horaEl) horaEl.value = '';
+      ejecutarOptimizacionTurnos();
+    }
+
     async function ejecutarOptimizacionTurnos() {
       const statusEl = document.getElementById('optStatusMsg');
       const wrapEl = document.getElementById('optResultadosWrap');
@@ -7578,6 +7588,7 @@ REGLAS:
       const maxDiasLaborablesQuincena = 15 - diasDescansoQuincena;
       const modo = (document.getElementById('optModo') || {}).value || 'MAXIMIZAR_DINERO';
       const franjaHoraria = (document.getElementById('optFranja') || {}).value || 'TODAS';
+      const horaInicioTurno = ((document.getElementById('optHoraInicio') || {}).value || '').trim() || null;
 
       const formulaEl = document.getElementById('optFormulaObj');
       if (formulaEl) {
@@ -7602,7 +7613,8 @@ REGLAS:
             maxDiasLaborablesQuincena,
             diasDescansoQuincena,
             modo,
-            franjaHoraria
+            franjaHoraria,
+            horaInicioTurno
           })
         });
         if (!res.ok) throw new Error('Error HTTP ' + res.status);
